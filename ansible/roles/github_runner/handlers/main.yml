@@ -1,3 +1,9 @@
+- name: Apply the kernel settings
+  ansible.builtin.command:
+    cmd: sysctl --load /etc/sysctl.d/60-github-runner.conf
+  changed_when: true
+  when: not ansible_check_mode
+
 # Only the idle runners: a busy one may be running the job that applies this.
 - name: Restart idle runners
   ansible.builtin.command:

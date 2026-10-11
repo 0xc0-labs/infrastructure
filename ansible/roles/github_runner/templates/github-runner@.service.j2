@@ -5,23 +5,39 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=runner
-Group=runner
+# A user per instance: the other instance's job cannot read this one's files,
+# environment or BuildKit.
+User=runner-%i
+Group=runner-%i
+# The group that opens this instance's BuildKit socket, and no other.
+SupplementaryGroups=buildkit-%i
+Environment=BUILDKIT_HOST=unix:///run/github-runner-buildkit/%i/buildkitd.sock
 WorkingDirectory=/opt/actions-runner/%i
-# "+" runs these as root: the copies of older versions pruned, a clean work
-# folder, then a fresh just-in-time config fetched through Vault with the
-# AppRole secret ID, which the runner user cannot read.
+# "+" runs these as root: the copies of older versions pruned, an empty work
+# folder and home, an empty BuildKit, then a fresh just-in-time config fetched
+# through Vault with the AppRole secret ID, which the runner user cannot read.
+# A BuildKit that does not start fails the job that builds an image, not the
+# runner: the jobs that would fix it run here too.
 ExecStartPre=+/usr/local/libexec/github-runner-prune %i
-ExecStartPre=+/usr/bin/rm -rf /opt/actions-runner/%i/_work
+ExecStartPre=+/usr/local/libexec/github-runner-reset %i
+ExecStartPre=-+/usr/bin/systemctl restart github-runner-buildkit@%i.service
 ExecStartPre=+/usr/local/libexec/github-runner-jit %i
 # From the copy's real path, not the link: the runner builds its paths from
 # where it starts, and a link that moves under a running job must not move them.
-ExecStart=/bin/bash -c 'cd "$(readlink -f /opt/actions-runner/%i)" && config=$(cat /run/github-runner/%i.jit); rm -f /run/github-runner/%i.jit; exec ./run.sh --jitconfig "$config"'
+ExecStart=/bin/bash -c 'cd "$(readlink -f /opt/actions-runner/%i)" && config=$(cat /run/github-runner/%i/jit); rm -f /run/github-runner/%i/jit; exec ./run.sh --jitconfig "$config"'
+# When the job ends, nothing it built or cached stays behind: its BuildKit
+# stops and empties, and so do its work folder and home.
+ExecStopPost=-+/usr/bin/systemctl stop github-runner-buildkit@%i.service
+ExecStopPost=+/usr/local/libexec/github-runner-reset %i
 # One job, then the runner exits and deregisters: start the next one.
 Restart=always
 RestartSec=10s
 NoNewPrivileges=yes
 PrivateTmp=yes
+# Its /dev/shm and IPC objects go when it stops.
+RemoveIPC=yes
+# Other users' processes, and their command lines, are not visible to the job.
+ProtectProc=invisible
 
 [Install]
 WantedBy=multi-user.target

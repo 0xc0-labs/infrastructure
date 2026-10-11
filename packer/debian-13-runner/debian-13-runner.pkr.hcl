@@ -30,7 +30,7 @@ source "proxmox-clone" "runner" {
   vm_id                = 9101
   vm_name              = "debian-13-runner"
   template_name        = "debian-13-runner"
-  template_description = "Debian 13 base with the GitHub Actions runner. Built by Packer from packer/debian-13-runner, commit ${var.commit}."
+  template_description = "Debian 13 base with the GitHub Actions runner and rootless BuildKit. Built by Packer from packer/debian-13-runner, commit ${var.commit}."
 
   cores           = 2
   memory          = 2048

@@ -80,10 +80,14 @@ fetching a just-in-time config from a GitHub App of their own before every
 job. The App's key never reaches the CI VMs, `vm-ci-01` and `vm-ci-02`: it
 lives in Vault's Transit, which signs the App's JWT for them. They hold only an
 AppRole secret ID (`ci/infrastructure/runner-approle`), readable only by root,
-whose token can do nothing but ask for that signature; jobs run as the
-unprivileged `runner` user. No secret goes on a command line there, where any
-process could read it. Each runner carries the `0xc0` label and its VM's
-name, so a job can pin itself to one VM.
+whose token can do nothing but ask for that signature. Each of a VM's two
+runners runs its jobs as an unprivileged user of its own, `runner-<n>`, and
+builds images with a rootless BuildKit of its own, run as `buildkit-<n>`:
+started empty before every job and stopped after it, so nothing a job builds
+or caches outlives it or reaches the other runner (the role's `README.md`). No
+secret goes on a command line there, where any process could read it. Each
+runner carries the `0xc0` label and its VM's name, so a job can pin itself to
+one VM.
 
 `playbooks/cluster.yml` builds the cluster: `haproxy`, `keepalived` and the
 public tunnel's `cloudflared` on the `lb` pair, holding the VIPs, then

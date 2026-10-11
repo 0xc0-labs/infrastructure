@@ -45,6 +45,45 @@
     path: /etc/github-runner/app.pem
     state: absent
 
+# One user per instance, so a job cannot read the other instance's work, home,
+# environment or BuildKit, as it could when both ran as one user.
+- name: Create a user per runner instance
+  ansible.builtin.user:
+    name: "runner-{{ item }}"
+    system: true
+    shell: /bin/bash
+    home: "/home/runner-{{ item }}"
+    create_home: true
+  loop: "{{ range(1, github_runner_count + 1) | list }}"
+  register: github_runner_users
+
+# Another user for the instance's BuildKit: its job reaches the daemon through
+# the socket alone, and never runs, nor controls, a process without
+# NoNewPrivileges. Its home is the state its unit empties before and after
+# every job.
+- name: Create a BuildKit user per runner instance
+  ansible.builtin.user:
+    name: "buildkit-{{ item }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "/var/lib/github-runner-buildkit/{{ item }}"
+    create_home: false
+  loop: "{{ range(1, github_runner_count + 1) | list }}"
+
+# Every ID a build uses but root maps onto these: one range per instance, never
+# shared with the other instance nor with a range useradd hands out.
+- name: Give each BuildKit user its subordinate IDs
+  ansible.builtin.lineinfile:
+    path: "{{ item.0 }}"
+    regexp: "^buildkit-{{ item.1 }}:"
+    line: "buildkit-{{ item.1 }}:{{ github_runner_buildkit_subid_start + (item.1 - 1) * 65536 }}:65536"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ ['/etc/subuid', '/etc/subgid'] | product(range(1, github_runner_count + 1)) | list }}"
+  loop_control:
+    label: "{{ item.0 }} buildkit-{{ item.1 }}"
+
 - name: Install the runner helpers
   ansible.builtin.template:
     src: "{{ item }}.j2"
@@ -52,30 +91,31 @@
     owner: root
     group: root
     mode: "0700"
-  loop: [github-runner-busy, github-runner-prune, github-runner-restart-idle]
+  loop: [github-runner-busy, github-runner-prune, github-runner-reset, github-runner-restart-idle]
   register: github_runner_helpers
 
 # A job running from one copy keeps it while the next version unpacks beside it.
+# Only a missing copy is created: an existing one keeps its owner here, and
+# goes to the instance's user on its runner's next start (github-runner-reset),
+# so a busy job never loses its own directory.
 - name: Create a directory per runner and version
-  ansible.builtin.file:
-    path: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
-    state: directory
-    owner: runner
-    group: runner
-    mode: "0750"
+  ansible.builtin.command:
+    cmd: "install -d -o runner-{{ item }} -g runner-{{ item }} -m 0750 /opt/actions-runner/{{ item }}-{{ github_runner_version }}"
+    creates: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
   loop: "{{ range(1, github_runner_count + 1) | list }}"
   register: github_runner_copies
 
-# A runner that updated itself in place is left alone until the next bump.
+# A runner that updated itself in place is left alone until the next bump. As
+# root, which reads a copy whatever its owner, and hands the new one to the
+# instance's user.
 - name: Unpack the runner
   ansible.builtin.command:
     cmd: >-
-      sh -c 'tar -xzf /var/cache/actions-runner-{{ github_runner_version }}.tar.gz
-      && touch .version-{{ github_runner_version }}'
+      sh -c 'tar --no-same-owner -xzf /var/cache/actions-runner-{{ github_runner_version }}.tar.gz
+      && touch .version-{{ github_runner_version }}
+      && chown -R runner-{{ item }}:runner-{{ item }} .'
     chdir: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
     creates: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}/.version-{{ github_runner_version }}"
-  become: true
-  become_user: runner
   loop: "{{ range(1, github_runner_count + 1) | list }}"
   when: not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed))
 
@@ -122,13 +162,23 @@
     path: "/opt/actions-runner/{{ item }}"
     src: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
     state: link
-    owner: runner
-    group: runner
+    owner: "runner-{{ item }}"
+    group: "runner-{{ item }}"
     force: true
   loop: "{{ range(1, github_runner_count + 1) | list }}"
   when:
     - item not in github_runner_held
-    - not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed))
+    - not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed or github_runner_users.changed))
+  notify: Restart idle runners
+
+# Started and stopped by its runner, around every job: never enabled itself.
+- name: Install the BuildKit unit
+  ansible.builtin.template:
+    src: github-runner-buildkit@.service.j2
+    dest: /etc/systemd/system/github-runner-buildkit@.service
+    owner: root
+    group: root
+    mode: "0644"
   notify: Restart idle runners
 
 - name: Install the systemd unit
@@ -159,3 +209,32 @@
       {{ h.address }} {{ h.names | join(' ') }}
       {% endfor %}
     state: "{{ 'present' if github_runner_hosts | length > 0 else 'absent' }}"
+
+# The idle runners start again now, each as its instance's user, so that only
+# a busy one may still run as the user both instances shared before.
+- name: Restart the idle runners onto their own users
+  ansible.builtin.meta: flush_handlers
+
+- name: Look for the user both instances shared before
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Find what still runs as it
+  ansible.builtin.command:
+    cmd: pgrep -u runner
+  register: github_runner_shared_user_procs
+  changed_when: false
+  failed_when: github_runner_shared_user_procs.rc not in [0, 1]
+  check_mode: false
+  when: "'runner' in ansible_facts.getent_passwd"
+
+# Its home holds what earlier jobs cached. A busy runner keeps it until the
+# next run.
+- name: Remove it, with its home, once nothing runs as it
+  ansible.builtin.user:
+    name: runner
+    state: absent
+    remove: true
+  when:
+    - "'runner' in ansible_facts.getent_passwd"
+    - github_runner_shared_user_procs.rc == 1

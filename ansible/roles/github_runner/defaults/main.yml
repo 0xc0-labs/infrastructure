@@ -5,6 +5,16 @@ github_runner_tarball_sha256: "70920811a4f8ad4328818682bca5c6469c1c942fab5244886
 
 github_runner_count: 2
 
+# Each instance's own rootless BuildKit (README.md). BuildKit's own rootless
+# image pairs this release with this RootlessKit.
+github_runner_buildkit_version: "0.34.0"
+github_runner_buildkit_tarball_sha256: "14813b1fb2a40082114e6d386c6fc5e7dd5298176ce7ee1a18bc33e73e109ac3"
+github_runner_rootlesskit_version: "3.2.0"
+github_runner_rootlesskit_tarball_sha256: "ff612d1d35854a52569acc4a4e9152f41504e69dcc13ff4c94cc9040dc28b3d9"
+# Instance N's BuildKit user maps the 65536 IDs from start + (N - 1) * 65536,
+# above login.defs' SUB_UID_MAX (600100000), where useradd hands out no range.
+github_runner_buildkit_subid_start: 1000000000
+
 # Created by .github (modules/runner-group).
 github_runner_group: "0xc0"
 github_runner_labels: ["0xc0"]

@@ -7,14 +7,6 @@
     update_cache: true
     cache_valid_time: 3600
 
-- name: Create the runner user
-  ansible.builtin.user:
-    name: runner
-    system: true
-    shell: /bin/bash
-    home: /home/runner
-    create_home: true
-
 - name: Download runner {{ github_runner_version }}
   ansible.builtin.get_url:
     url: "https://github.com/actions/runner/releases/download/v{{ github_runner_version }}/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
@@ -42,3 +34,98 @@
     chdir: /opt/actions-runner/.dist-{{ github_runner_version }}
     creates: /var/lib/actions-runner-deps-{{ github_runner_version }}
   when: not (ansible_check_mode and (github_runner_tarball.changed or github_runner_dist.changed))
+
+# newuidmap and newgidmap: RootlessKit maps a BuildKit user's subordinate IDs
+# with them. Each instance's BuildKit runs as a user of its own (configure).
+- name: Install what rootless BuildKit needs
+  ansible.builtin.apt:
+    name: uidmap
+    state: present
+
+# Debian allows it already: this keeps it so.
+- name: Allow unprivileged user namespaces
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/60-github-runner.conf
+    content: |
+      # Managed by Ansible (github_runner): rootless BuildKit runs every build
+      # in a user namespace of its own.
+      kernel.unprivileged_userns_clone = 1
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply the kernel settings
+
+# BuildKit's snapshotter. Loaded at boot rather than left to the first mount,
+# which comes from inside a user namespace: without overlayfs, BuildKit falls
+# back to copying every layer.
+- name: Load overlayfs on boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/github-runner.conf
+    content: |
+      # Managed by Ansible (github_runner): rootless BuildKit's snapshotter.
+      overlay
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Look for overlayfs
+  ansible.builtin.stat:
+    path: /sys/module/overlay
+  register: github_runner_overlay
+
+- name: Load overlayfs now
+  ansible.builtin.command:
+    cmd: modprobe overlay
+  changed_when: true
+  when: not github_runner_overlay.stat.exists
+
+- name: Download BuildKit {{ github_runner_buildkit_version }}
+  vars:
+    github_runner_buildkit_tag: "v{{ github_runner_buildkit_version }}"
+  ansible.builtin.get_url:
+    url: "https://github.com/moby/buildkit/releases/download/{{ github_runner_buildkit_tag }}/buildkit-{{ github_runner_buildkit_tag }}.linux-amd64.tar.gz"
+    dest: "/var/cache/buildkit-{{ github_runner_buildkit_version }}.tar.gz"
+    checksum: "sha256:{{ github_runner_buildkit_tarball_sha256 }}"
+    mode: "0644"
+  register: github_runner_buildkit_tarball
+
+- name: Download RootlessKit {{ github_runner_rootlesskit_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/rootless-containers/rootlesskit/releases/download/v{{ github_runner_rootlesskit_version }}/rootlesskit-x86_64.tar.gz"
+    dest: "/var/cache/rootlesskit-{{ github_runner_rootlesskit_version }}.tar.gz"
+    checksum: "sha256:{{ github_runner_rootlesskit_tarball_sha256 }}"
+    mode: "0644"
+  register: github_runner_rootlesskit_tarball
+
+# A directory per version, which the BuildKit unit names: a bump restarts the
+# idle runners onto it, and a busy one's BuildKit keeps its binaries until its
+# job ends. Only what the rootless OCI worker runs: no CNI, no QEMU.
+- name: Unpack BuildKit
+  ansible.builtin.command:
+    cmd: >-
+      sh -c 'mkdir -p /opt/buildkit/{{ github_runner_buildkit_version }}
+      && tar -xzf /var/cache/buildkit-{{ github_runner_buildkit_version }}.tar.gz
+      -C /opt/buildkit/{{ github_runner_buildkit_version }} bin/buildctl bin/buildkitd bin/buildkit-runc
+      && touch /opt/buildkit/{{ github_runner_buildkit_version }}/.unpacked'
+    creates: /opt/buildkit/{{ github_runner_buildkit_version }}/.unpacked
+  when: not (ansible_check_mode and github_runner_buildkit_tarball.changed)
+  register: github_runner_buildkit_unpacked
+
+- name: Unpack RootlessKit
+  ansible.builtin.command:
+    cmd: >-
+      sh -c 'mkdir -p /opt/rootlesskit/{{ github_runner_rootlesskit_version }}
+      && tar -xzf /var/cache/rootlesskit-{{ github_runner_rootlesskit_version }}.tar.gz
+      -C /opt/rootlesskit/{{ github_runner_rootlesskit_version }} rootlesskit
+      && touch /opt/rootlesskit/{{ github_runner_rootlesskit_version }}/.unpacked'
+    creates: /opt/rootlesskit/{{ github_runner_rootlesskit_version }}/.unpacked
+  when: not (ansible_check_mode and github_runner_rootlesskit_tarball.changed)
+
+# The client the jobs run; the daemon is the BuildKit unit's.
+- name: Put buildctl on the jobs' PATH
+  ansible.builtin.file:
+    path: /usr/local/bin/buildctl
+    src: /opt/buildkit/{{ github_runner_buildkit_version }}/bin/buildctl
+    state: link
+    force: true
+  when: not (ansible_check_mode and (github_runner_buildkit_tarball.changed or github_runner_buildkit_unpacked.changed))

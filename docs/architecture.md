@@ -243,6 +243,12 @@ own GitHub App. The App's key never reaches the CI VMs: Vault's Transit signs
 the App's JWT for them, after an AppRole login whose token can do nothing
 else, with a secret ID only root reads.
 
+Each of a VM's two runners runs its jobs as a user of its own, and builds
+images with a rootless BuildKit of its own: started empty before every job,
+stopped after it with everything it built, and reached on a Unix socket alone.
+Nothing a job builds or caches outlives it, or reaches the other runner
+([`github_runner`](../ansible/roles/github_runner/README.md)).
+
 ## Secrets
 
 ```mermaid
