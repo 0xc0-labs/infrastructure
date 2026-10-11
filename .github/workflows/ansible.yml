@@ -16,53 +16,28 @@ permissions:
   id-token: write
 
 jobs:
-  # One playbook per job, chained, so they run in this order: the cluster
-  # first; the CI VMs last, since their runners run this job, and a busy one is
-  # left for its next start. One job with max-parallel: 1 would not keep it:
-  # GitHub queues a matrix's jobs in an order of its own (#205). A playbook
-  # that fails does not stop the next: each holds its own hosts. Each is
-  # approved for production as its turn comes.
-  cluster:
+  ansible:
     uses: 0xc0-labs/.github/.github/workflows/ansible.yml@main
     with:
-      playbooks: playbooks/cluster.yml
       # mise's tools only: Ansible comes from uv.lock (scripts/python-env).
-      tools: &tools opentofu jq uv
+      tools: opentofu jq uv
       # The wrapper reads the tunnel token and the admin keys from this root.
-      tofu-root: &tofu-root environments/prod
-      vault-addr: &vault-addr https://vault.int.0xc0.cc
-      vault-role: &vault-role infrastructure
-      vault-secrets: &vault-secrets |
+      tofu-root: environments/prod
+      # All at once, one job each, after a single approval of production. The
+      # CI VMs' playbook reconfigures the very runners these jobs run on, which
+      # is safe: it leaves a busy runner alone until its job ends (#204, #206;
+      # the github_runner role's README).
+      playbooks: |
+        playbooks/cluster.yml
+        playbooks/vm-access.yml
+        playbooks/vm-ci.yml
+      vault-addr: https://vault.int.0xc0.cc
+      vault-role: infrastructure
+      vault-secrets: |
         ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
         ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
         ci/data/infrastructure/ssh private_key | CI_SSH_PRIVATE_KEY ;
         ci/data/infrastructure/runner-approle secret_id | GITHUB_RUNNER_APPROLE_SECRET_ID ;
         ci/data/infrastructure/rke2 token | RKE2_TOKEN ;
         platform/data/argocd/admin password_bcrypt | ARGOCD_ADMIN_PASSWORD_BCRYPT ;
-      ssh-key-env: &ssh-key-env CI_SSH_PRIVATE_KEY
-
-  vm-access:
-    needs: cluster
-    if: ${{ !cancelled() }}
-    uses: 0xc0-labs/.github/.github/workflows/ansible.yml@main
-    with:
-      playbooks: playbooks/vm-access.yml
-      tools: *tools
-      tofu-root: *tofu-root
-      vault-addr: *vault-addr
-      vault-role: *vault-role
-      vault-secrets: *vault-secrets
-      ssh-key-env: *ssh-key-env
-
-  vm-ci:
-    needs: vm-access
-    if: ${{ !cancelled() }}
-    uses: 0xc0-labs/.github/.github/workflows/ansible.yml@main
-    with:
-      playbooks: playbooks/vm-ci.yml
-      tools: *tools
-      tofu-root: *tofu-root
-      vault-addr: *vault-addr
-      vault-role: *vault-role
-      vault-secrets: *vault-secrets
-      ssh-key-env: *ssh-key-env
+      ssh-key-env: CI_SSH_PRIVATE_KEY
