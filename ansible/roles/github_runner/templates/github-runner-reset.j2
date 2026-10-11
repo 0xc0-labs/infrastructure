@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Leaves runner instance $1 with nothing from an earlier job: no work folder
+# and an empty home. Runs as root before every start and after every stop, so
+# what a job wrote outlives it no longer than its runner's exit.
+#
+# Its copy of the runner goes to the instance's own user: a copy unpacked
+# before one user per instance still belongs to the user both shared.
+set -euo pipefail
+instance="$1"
+user="runner-$instance"
+copy=$(readlink -f "/opt/actions-runner/$instance")
+if [ -d "$copy" ]; then
+  rm -rf -- "$copy/_work"
+  if [ -n "$(find "$copy" ! -user "$user" -print -quit)" ]; then
+    chown -R "$user:$user" "$copy"
+  fi
+fi
+rm -rf -- "/home/$user"
+install -d -o "$user" -g "$user" -m 0700 "/home/$user"

@@ -10,7 +10,15 @@ argument_specs:
         each runner takes one job, deregisters and starts clean.
       - The App's key never reaches the VM. That step logs in to Vault with an
         AppRole secret ID and has Transit sign the App's JWT.
-      - Jobs run as the unprivileged runner user, which cannot read the secret ID.
+      - Each instance's jobs run as an unprivileged user of its own,
+        runner-<n>, which cannot read the secret ID, nor anything of the other
+        instance's. Its work folder and home are emptied before and after
+        every job.
+      - Each instance has its own rootless BuildKit, run by RootlessKit as a
+        user of its own, buildkit-<n>, with its own subordinate IDs. The
+        runner starts it empty before every job and stops it after, removing
+        what it built. The job reaches it only through its Unix socket, at
+        $BUILDKIT_HOST (README.md).
     options:
       github_runner_app_id:
         type: str
@@ -49,6 +57,26 @@ argument_specs:
         type: int
         default: 2
         description: Runners on this VM, each taking one job at a time.
+      github_runner_buildkit_version:
+        type: str
+        default: "0.34.0"
+        description: BuildKit release the instances' daemons run.
+      github_runner_buildkit_tarball_sha256:
+        type: str
+        required: true
+        description: SHA-256 of that release's buildkit linux-amd64 tarball.
+      github_runner_rootlesskit_version:
+        type: str
+        default: "3.2.0"
+        description: RootlessKit release that runs them.
+      github_runner_rootlesskit_tarball_sha256:
+        type: str
+        required: true
+        description: SHA-256 of that release's rootlesskit-x86_64 tarball.
+      github_runner_buildkit_subid_start:
+        type: int
+        default: 1000000000
+        description: First subordinate ID of instance 1's BuildKit user; each instance takes the next 65536.
       github_runner_group:
         type: str
         default: "0xc0"
@@ -74,9 +102,10 @@ argument_specs:
   install:
     short_description: What a runner VM needs, without the runners
     description:
-      - The packages, the runner user, the runner tarball pinned by version and
-        checksum, and its system dependencies. No App, no key, no units; this
-        is what the runner template bakes, with Packer.
+      - The packages, the runner tarball pinned by version and checksum, and
+        its system dependencies; BuildKit and RootlessKit pinned the same way,
+        uidmap, and the kernel setting rootless builds need. No App, no key, no
+        users, no units; this is what the runner template bakes, with Packer.
     options:
       github_runner_version:
         type: str
@@ -86,3 +115,19 @@ argument_specs:
         type: str
         required: true
         description: SHA-256 of that release's actions-runner-linux-x64 tarball.
+      github_runner_buildkit_version:
+        type: str
+        default: "0.34.0"
+        description: BuildKit release to install.
+      github_runner_buildkit_tarball_sha256:
+        type: str
+        required: true
+        description: SHA-256 of that release's buildkit linux-amd64 tarball.
+      github_runner_rootlesskit_version:
+        type: str
+        default: "3.2.0"
+        description: RootlessKit release to install.
+      github_runner_rootlesskit_tarball_sha256:
+        type: str
+        required: true
+        description: SHA-256 of that release's rootlesskit-x86_64 tarball.

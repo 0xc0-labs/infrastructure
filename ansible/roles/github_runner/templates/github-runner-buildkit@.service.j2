@@ -1,0 +1,35 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Rootless BuildKit for GitHub Actions runner %i
+# Started empty by github-runner@%i before every job and stopped after it.
+# Never enabled on its own.
+
+[Service]
+# buildkitd says when it is ready, from inside RootlessKit's namespaces: not the
+# main process.
+Type=notify
+NotifyAccess=all
+User=buildkit-%i
+Group=buildkit-%i
+# The socket's directory, which the instance's runner opens through this
+# group. Gone when the unit stops.
+RuntimeDirectory=github-runner-buildkit/%i
+RuntimeDirectoryMode=0750
+# The release's own runc, found by name.
+Environment=PATH=/opt/buildkit/{{ github_runner_buildkit_version }}/bin:/usr/local/bin:/usr/bin:/bin
+Environment=XDG_RUNTIME_DIR=/run/github-runner-buildkit/%i
+Environment=TMPDIR=/var/lib/github-runner-buildkit/%i/tmp
+# "+" runs these as root, which can remove what the build's subordinate IDs
+# own. Everything the daemon writes is under its home: empty before it starts,
+# and removed after it stops.
+ExecStartPre=+/usr/bin/rm -rf /var/lib/github-runner-buildkit/%i
+ExecStartPre=+/usr/bin/install -d -o buildkit-%i -g buildkit-%i -m 0700 /var/lib/github-runner-buildkit/%i /var/lib/github-runner-buildkit/%i/tmp
+# RootlessKit maps the user's subordinate IDs (newuidmap) and shares the VM's
+# network, so a build reaches what its job reaches and nothing listens: the
+# daemon answers on its Unix socket alone.
+ExecStart=/opt/rootlesskit/{{ github_runner_rootlesskit_version }}/rootlesskit --net=host --port-driver=none /opt/buildkit/{{ github_runner_buildkit_version }}/bin/buildkitd --root /var/lib/github-runner-buildkit/%i/root --addr unix:///run/github-runner-buildkit/%i/buildkitd.sock
+ExecStopPost=+/usr/bin/rm -rf /var/lib/github-runner-buildkit/%i
+KillMode=mixed
+UMask=0077
+PrivateTmp=yes
+RemoveIPC=yes
