@@ -17,6 +17,10 @@ application and environment, named `<namespace>-<purpose>` (`payload-media`).
   later, through Cloudflare's cache. Cloudflare creates the name's DNS record
   and certificate itself. The zone's cache and header rules are not here:
   each phase has one ruleset per zone, in `zone-rules`.
+  The name's TLS minimum is its own, and holds whatever its zone's
+  (`zone-settings`) is, but not straight away: `media.0xc0.cc` still
+  accepted TLS 1.1 minutes after its apply, and refused it the next day
+  (#215).
 
 The application reaches its bucket at `endpoint`, the account's S3 endpoint,
 with an R2 token scoped to that bucket alone, which the operator creates in

@@ -170,7 +170,8 @@ out to Cloudflare. From there to Traefik the traffic is HTTPS again, checked
 against its domain's Let's Encrypt wildcard, issued by cert-manager (DNS-01 through
 Cloudflare), with the request's host as SNI. The tunnel serves every name of
 each domain in `public_domains`; a name is public only once external-dns gives
-it a record, which it does only for the routes marked public.
+it a record, which it does only for the routes marked public. Cloudflare's
+edge refuses TLS below 1.2 for every name those zones proxy (`zone-settings`).
 
 **No admin panel is ever published this way**: the portals,
 Vault and the Kubernetes API are reached only over WARP (operator decision,
