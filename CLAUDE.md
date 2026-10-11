@@ -122,8 +122,10 @@ Locally, from `ansible/`: `uv run --frozen --group lint ansible-lint`.
 RKE2 nodes.
 Secrets and per-VM settings stay in Ansible. `scripts/packer <template>
 validate` locally. Every merge to `main` that touches `packer/` or the roles
-rebuilds them all in CI, after approval: each one deleted by name and built
-again. Skill `packer-template`.
+rebuilds them all in CI, after approval: each one built beside the old one,
+as `<name>-next`, and swapped in for it only once it succeeds, so a build that
+fails or is cut leaves the old template in place (`scripts/proxmox-template`,
+#207). Skill `packer-template`.
 
 ## Network source of truth
 
@@ -205,8 +207,9 @@ Cloud, RKE2 pods and services, lab).
   `0xc0`.
 - Templates are found by **name**, never by VMID. Each still takes a fixed
   VMID, so the ID says what it is: 9000-9099 for the raw images (`vm_id` in
-  `templates`), 9100-9199 for Packer's (`vm_id` in the template), kept across
-  rebuilds. The raw cloud image is a pinned, dated
+  `templates`), 9100-9149 for Packer's (`vm_id` in the template's
+  variables), kept across rebuilds, and that ID plus 50 for a template's next
+  build until it is swapped in. The raw cloud image is a pinned, dated
   build with its published checksum, never a `latest` link. A VM ignores later
   changes to its template; moving it onto a new one is bumping its `rebuild`.
 - OpenTofu is **always** written as modules, with Google's layout:

@@ -23,10 +23,10 @@ source "proxmox-clone" "base" {
   clone_vm   = "debian-13-cloud"
   full_clone = true
 
-  # 9100-9199. A rebuild deletes the old template first, freeing the ID.
-  vm_id                = 9100
-  vm_name              = "debian-13-base"
-  template_name        = "debian-13-base"
+  # Its own VMID and name by default; scripts/packer builds to the next ones.
+  vm_id                = var.vm_id
+  vm_name              = var.vm_name
+  template_name        = var.vm_name
   template_description = "Debian 13, the official cloud image with the base role. Built by Packer from packer/debian-13-base, commit ${var.commit}."
 
   cores           = 1

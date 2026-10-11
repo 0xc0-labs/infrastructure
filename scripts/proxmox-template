@@ -1,0 +1,117 @@
+# Replaces a Proxmox template only once its next build exists (#207).
+# Sourced by scripts/packer, after vault_env_proxmox.
+#
+# A template keeps one VMID across rebuilds, vm_id in its variables.pkr.hcl,
+# 9100-9149. Its build goes to vm_id + 50, under "<name>-next", and only once
+# Packer has finished it is the old template deleted and the new one cloned
+# into the fixed VMID under the template's name. A build that fails or is cut
+# leaves the old template where it was.
+#
+# The API token goes in a header through a file descriptor, never on a command
+# line, where any process on the runner's VM could read it.
+
+pve_api="${PROXMOX_VE_ENDPOINT%/}/api2/json"
+
+pve() {  # pve <method> <path> [curl args...]
+  local method="$1" path="$2"; shift 2
+  curl -fsS -X "$method" -H @<(printf 'Authorization: PVEAPIToken=%s\n' "$PROXMOX_VE_API_TOKEN") \
+    "$@" "$pve_api$path"
+}
+
+pve_vms() {  # pve_vms <jq filter on one VM>: the VMs matching it, as a JSON array
+  pve GET "/cluster/resources?type=vm" | jq -c "[.data[] | select($1)]"
+}
+
+pve_wait() {  # pve_wait <node> <upid> <what>
+  local node="$1" upid="$2" what="$3" status
+  [ -n "$upid" ] && [ "$upid" != null ] || return 0
+  for _ in $(seq 1 300); do
+    status="$(pve GET "/nodes/$node/tasks/$(jq -rn --arg u "$upid" '$u|@uri')/status" |
+      jq -r '.data | "\(.status) \(.exitstatus // "")"')"
+    case "$status" in
+      "stopped OK") return 0 ;;
+      stopped*) echo "$what failed: $status" >&2; return 1 ;;
+    esac
+    sleep 2
+  done
+  echo "$what timed out" >&2
+  return 1
+}
+
+pve_destroy() {  # pve_destroy <vm as JSON>: stops it if it runs, then deletes it with its disks
+  local node vmid name
+  node="$(jq -r .node <<<"$1")"; vmid="$(jq -r .vmid <<<"$1")"; name="$(jq -r .name <<<"$1")"
+  if [ "$(jq -r .status <<<"$1")" = running ]; then
+    pve_wait "$node" "$(pve POST "/nodes/$node/qemu/$vmid/status/stop" | jq -r .data)" "stopping $name ($vmid)"
+  fi
+  pve_wait "$node" "$(pve DELETE "/nodes/$node/qemu/$vmid?purge=1&destroy-unreferenced-disks=1" | jq -r .data)" \
+    "deleting $name ($vmid)"
+  echo "$name: $vmid deleted"
+}
+
+template_ids() {  # template_ids <template>: sets template_name, template_id, next_name, next_id
+  template_name="$1"
+  template_id="$(sed -nE '/^variable "vm_id"/,/^}/ s/^[[:space:]]*default[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' \
+    "packer/$template_name/variables.pkr.hcl")"
+  [ -n "$template_id" ] || { echo "$template_name: no vm_id default in its variables.pkr.hcl" >&2; return 1; }
+  next_name="$template_name-next"
+  next_id=$((template_id + 50))
+}
+
+# A build that was cut leaves its next VM behind. Half built, it goes. Finished
+# but not swapped in, it is swapped in if the template is missing, so the chain
+# keeps a template to clone; otherwise it goes, as the build about to run
+# replaces it.
+template_clear_next() {
+  local next at_next live
+  at_next="$(pve_vms ".vmid == $next_id")"
+  if [ "$(jq length <<<"$at_next")" != 0 ] && [ "$(jq -r '.[0].name' <<<"$at_next")" != "$next_name" ]; then
+    echo "$template_name: VMID $next_id holds $(jq -r '.[0].name' <<<"$at_next"), not $next_name: refusing" >&2
+    return 1
+  fi
+  next="$(pve_vms ".name == \"$next_name\"")"
+  case "$(jq length <<<"$next")" in
+    0) return 0 ;;
+    1) ;;
+    *) echo "$template_name: more than one VM is named $next_name: refusing" >&2; return 1 ;;
+  esac
+  live="$(pve_vms ".name == \"$template_name\" and .template == 1")"
+  if [ "$(jq -r '.[0].template' <<<"$next")" = 1 ] && [ "$(jq length <<<"$live")" = 0 ]; then
+    echo "$template_name: missing, and a finished $next_name is waiting: swapping it in first"
+    template_promote
+  else
+    pve_destroy "$(jq -c '.[0]' <<<"$next")"
+  fi
+}
+
+# The build succeeded: the old template goes and the new one takes its VMID
+# and name. A cut here leaves the finished next template, which the next build
+# swaps in first (template_clear_next).
+template_promote() {
+  local next live node
+  next="$(pve_vms ".name == \"$next_name\"")"
+  [ "$(jq length <<<"$next")" = 1 ] && [ "$(jq -r '.[0].template' <<<"$next")" = 1 ] &&
+    [ "$(jq -r '.[0].vmid' <<<"$next")" = "$next_id" ] ||
+    { echo "$template_name: no finished $next_name at $next_id to swap in" >&2; return 1; }
+  node="$(jq -r '.[0].node' <<<"$next")"
+
+  live="$(pve_vms ".name == \"$template_name\" or .vmid == $template_id")"
+  case "$(jq length <<<"$live")" in
+    0) ;;
+    1)
+      # Only the template, at its VMID, or what a cut swap left there: a clone
+      # not yet made a template. Anything else is not ours to delete.
+      [ "$(jq -r '.[0].name' <<<"$live")" = "$template_name" ] && [ "$(jq -r '.[0].vmid' <<<"$live")" = "$template_id" ] ||
+        { echo "$template_name: $(jq -r '.[0] | "\(.name) (\(.vmid))"' <<<"$live") is in the way: refusing" >&2; return 1; }
+      pve_destroy "$(jq -c '.[0]' <<<"$live")" ;;
+    *) echo "$template_name: more than one VM has its name or VMID $template_id: refusing" >&2; return 1 ;;
+  esac
+
+  pve_wait "$node" "$(pve POST "/nodes/$node/qemu/$next_id/clone" \
+    --data-urlencode "newid=$template_id" --data-urlencode "name=$template_name" --data-urlencode full=1 |
+    jq -r .data)" "cloning $next_name into $template_id"
+  pve_wait "$node" "$(pve POST "/nodes/$node/qemu/$template_id/template" | jq -r .data)" \
+    "making $template_id a template"
+  echo "$template_name: template $template_id swapped in"
+  pve_destroy "$(jq -c '.[0]' <<<"$next")"
+}

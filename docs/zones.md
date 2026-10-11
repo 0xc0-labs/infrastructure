@@ -79,9 +79,11 @@ carries two blank data disks besides its root one. HAProxy sends the API, the
 supervisor and the ingress to the servers only.
 
 Packer builds a template on a throwaway VM, cloned from the previous template
-in the chain (`packer/build-order`), which becomes the new template when the
-build ends: the old template is deleted by name first, and the new one takes
-the same fixed VMID. It lives in `ci`, where the runner that drives it can
+in the chain (`packer/build-order`), named `<name>-next` at the template's
+VMID plus 50, which becomes a template when the build ends. Only then is the
+old template deleted and the new one cloned into its fixed VMID, under its
+name: a build that fails or is cut leaves the old one in place. The build VM
+lives in `ci`, where the runner that drives it can
 reach it over SSH, at an address of its chain's: the chains build at once, the
 templates of one chain one after the other. No machine may take them.
 

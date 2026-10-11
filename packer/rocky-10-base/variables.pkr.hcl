@@ -45,3 +45,18 @@ variable "build_gateway" {
   type        = string
   default     = "10.10.1.1"
 }
+
+# The template's own VMID, kept across rebuilds, and its name. scripts/packer
+# builds to vm_id + 50 under "<name>-next" first, and swaps that in for the
+# template only once the build succeeds.
+variable "vm_id" {
+  description = "VMID the build takes: 9100-9149 for a template, plus 50 for its next build."
+  type        = number
+  default     = 9102
+}
+
+variable "vm_name" {
+  description = "Name the build VM and its template take."
+  type        = string
+  default     = "rocky-10-base"
+}
