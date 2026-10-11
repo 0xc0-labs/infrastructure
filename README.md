@@ -16,7 +16,6 @@ scripts/ansible          runs ansible-playbook, tunnel tokens and secrets in env
 scripts/vault-env        sourced by the others: each secret from Vault, unless set
 scripts/packer           validates or builds a template; a build replaces it once it succeeds
 scripts/proxmox-template sourced by scripts/packer: swaps a template's next build in
-scripts/delete-template  deletes nothing: kept while the packer workflow calls it
 scripts/rolling-reboot   restarts VMs one at a time, waiting for each
 ansible/                 what runs inside the VMs: inventory, playbooks, roles
 .github/workflows/       plan, apply, ansible, packer and issue-check pipelines

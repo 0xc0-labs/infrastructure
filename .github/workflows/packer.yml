@@ -4,10 +4,10 @@ name: packer
 on:
   pull_request:
     branches: [main]
-    paths: ['packer/**', 'ansible/roles/base/**', 'ansible/roles/github_runner/**', 'scripts/packer', 'scripts/proxmox-template', 'scripts/delete-template', 'scripts/vault-env', 'scripts/python-env', 'pyproject.toml', 'uv.lock', '.github/workflows/packer.yml']
+    paths: ['packer/**', 'ansible/roles/base/**', 'ansible/roles/github_runner/**', 'scripts/packer', 'scripts/proxmox-template', 'scripts/vault-env', 'scripts/python-env', 'pyproject.toml', 'uv.lock', '.github/workflows/packer.yml']
   push:
     branches: [main]
-    paths: ['packer/**', 'ansible/roles/base/**', 'ansible/roles/github_runner/**', 'scripts/packer', 'scripts/proxmox-template', 'scripts/delete-template', 'scripts/vault-env', 'scripts/python-env', 'pyproject.toml', 'uv.lock', '.github/workflows/packer.yml']
+    paths: ['packer/**', 'ansible/roles/base/**', 'ansible/roles/github_runner/**', 'scripts/packer', 'scripts/proxmox-template', 'scripts/vault-env', 'scripts/python-env', 'pyproject.toml', 'uv.lock', '.github/workflows/packer.yml']
 
 # id-token: the build logs in to Vault with GitHub's OIDC token.
 permissions:
