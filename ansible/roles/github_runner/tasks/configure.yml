@@ -55,7 +55,6 @@
     home: "/home/runner-{{ item }}"
     create_home: true
   loop: "{{ range(1, github_runner_count + 1) | list }}"
-  register: github_runner_users
 
 # Another user for the instance's BuildKit: its job reaches the daemon through
 # the socket alone, and never runs, nor controls, a process without
@@ -157,18 +156,22 @@
     label: "{{ item.item }}"
   when: item.stat.isdir | default(false) and not item.stat.islnk and item.item not in github_runner_held
 
+# The link is root's, like its directory, and only the link: with follow, the
+# module would give its owner to the copy the link points to, the one a busy
+# runner is running from, and lock that runner out of it (#204).
 - name: Point each runner at its copy
   ansible.builtin.file:
     path: "/opt/actions-runner/{{ item }}"
     src: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
     state: link
-    owner: "runner-{{ item }}"
-    group: "runner-{{ item }}"
+    owner: root
+    group: root
+    follow: false
     force: true
   loop: "{{ range(1, github_runner_count + 1) | list }}"
   when:
     - item not in github_runner_held
-    - not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed or github_runner_users.changed))
+    - not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed))
   notify: Restart idle runners
 
 # Started and stopped by its runner, around every job: never enabled itself.

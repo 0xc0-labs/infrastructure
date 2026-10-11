@@ -35,6 +35,27 @@ A BuildKit that fails to start does not stop its runner: the job that builds an
 image fails, and every other job, the ones that would fix it included, still
 runs.
 
+## A run of the role, under running jobs
+
+The role runs from the runners it configures (`playbooks/vm-ci.yml`), so an
+instance may be busy while it runs, with that very run's job or any other.
+A busy instance is left alone until its job ends: no restart, and nothing of
+its own changes owner or moves:
+
+- the handler restarts only the idle instances (`github-runner-restart-idle`);
+- a copy of the runner is created or unpacked only when it is missing, and
+  only a new copy is handed to the instance's user;
+- the link to the current copy may move, but its owner is set on the link
+  alone (`follow: false`): set through it, it would land on the copy a busy
+  runner is running from and lock that runner out (#204);
+- the busy instance picks a change up when its job ends: its unit stops,
+  `github-runner-reset` hands its copy to its user, and it starts again on
+  the new unit.
+
+A change to the role keeps to this: whatever touches an instance's copy, home
+or unit while it may be running a job is a bug, and check mode does not show
+it when the task is skipped there.
+
 ## Building an image
 
 `buildctl` is on the `PATH`, and `$BUILDKIT_HOST` points it at the instance's
