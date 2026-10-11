@@ -138,6 +138,49 @@ module "admin_tunnel" {
   routes     = [var.zones_cidr]
 }
 
+# The applications' files (workspace#88). A public bucket's zone caches what
+# its hostname serves, and has every response to it read as data a browser
+# never sniffs nor runs.
+locals {
+  r2_public = { for name, b in var.r2_buckets : name => b.public if b.public != null }
+}
+
+module "zone_rules" {
+  source   = "../../modules/zone-rules"
+  for_each = toset([for b in values(local.r2_public) : b.zone_name])
+
+  zone_name = each.key
+  cache_rules = [for name, b in local.r2_public : {
+    ref         = "r2_${replace(name, "-", "_")}"
+    description = "R2 bucket ${name}, at ${b.hostname}: cached"
+    expression  = "http.host eq \"${b.hostname}\""
+    edge_ttl    = b.edge_ttl
+    browser_ttl = b.browser_ttl
+  } if b.zone_name == each.key]
+  response_headers = [for name, b in local.r2_public : {
+    ref         = "r2_${replace(name, "-", "_")}"
+    description = "R2 bucket ${name}, at ${b.hostname}: nothing it serves runs"
+    expression  = "http.host eq \"${b.hostname}\""
+    set = {
+      "X-Content-Type-Options"  = "nosniff"
+      "Content-Security-Policy" = "default-src 'none'"
+    }
+  } if b.zone_name == each.key]
+}
+
+module "r2_buckets" {
+  source   = "../../modules/r2-bucket"
+  for_each = var.r2_buckets
+
+  account_id    = var.cloudflare_account_id
+  name          = each.key
+  custom_domain = each.value.public == null ? null : { hostname = each.value.public.hostname, zone_name = each.value.public.zone_name }
+
+  # No depends_on module.zone_rules: a change to a rule would then defer the
+  # zone's lookup to the apply, and the custom domain, its zone_id unknown,
+  # would be replaced.
+}
+
 module "vms" {
   source   = "../../modules/vm"
   for_each = var.vms

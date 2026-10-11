@@ -52,7 +52,7 @@ variable "templates" {
 }
 
 variable "cloudflare_account_id" {
-  description = "Cloudflare account holding the tunnels and Zero Trust."
+  description = "Cloudflare account holding the tunnels, Zero Trust and the R2 buckets."
   type        = string
 }
 
@@ -328,4 +328,24 @@ variable "internal_domains" {
   description = "Domains of the WARP-only path: every name under them resolves to the cluster's internal_vip for WARP devices, and has no public record."
   type        = list(string)
   default     = []
+}
+
+variable "r2_buckets" {
+  description = "R2 buckets for the applications' files, keyed by name, <namespace>-<purpose>: one per application and environment. A bucket with public is served read only at public.hostname, a name in public.zone_name, through Cloudflare's cache: edge_ttl seconds at the edge, browser_ttl in the browser. One without is reached only with a token."
+  type = map(object({
+    public = optional(object({
+      hostname    = string
+      zone_name   = string
+      edge_ttl    = number
+      browser_ttl = number
+    }))
+  }))
+  default = {}
+
+  validation {
+    condition = length(distinct([for b in values(var.r2_buckets) : b.public.hostname if b.public != null])) == length([
+      for b in values(var.r2_buckets) : b if b.public != null
+    ])
+    error_message = "Two buckets share a public hostname."
+  }
 }

@@ -176,6 +176,22 @@ it a record, which it does only for the routes marked public.
 Vault and the Kubernetes API are reached only over WARP (operator decision,
 2026-09-29), and no portal is published behind Cloudflare Access either.
 
+## The applications' files
+
+The applications keep their files in Cloudflare R2, not in the cluster: one
+bucket per application and environment, `<namespace>-<purpose>`, in
+`r2_buckets` (`terraform.tfvars`; modules `r2-bucket` and `zone-rules`).
+Each application reaches its own bucket with an R2 token scoped to it, kept in
+Vault, never in the state.
+
+A public bucket's files are served at a hostname of ours (`media.0xc0.cc` for
+`payload-media`) straight from R2, through Cloudflare's cache: neither the
+tunnel nor the cluster is in the way, and the application need not be public.
+Every response there carries `X-Content-Type-Options: nosniff` and
+`Content-Security-Policy: default-src 'none'`, so a browser never runs what a
+bucket serves. No bucket is served at its `r2.dev` URL. A bucket with no
+hostname, staging's, is served by its application, over WARP.
+
 ## Admin access
 
 ```mermaid

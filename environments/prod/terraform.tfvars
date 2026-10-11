@@ -190,3 +190,18 @@ public_domains = ["0xc0.cc", "offby1.cc", "artistlabco.com"]
 
 # The WARP-only path's names (operator decision, 2026-09-30).
 internal_domains = ["int.0xc0.cc"]
+
+# The applications' files (operator decision, 2026-10-11; workspace#88). The
+# application reads its bucket with an R2 token scoped to it, kept in Vault.
+# Staging's media has no hostname: the application serves it, over WARP.
+r2_buckets = {
+  payload-media = {
+    public = {
+      hostname    = "media.0xc0.cc"
+      zone_name   = "0xc0.cc"
+      edge_ttl    = 604800 # 7 days
+      browser_ttl = 86400  # 1 day
+    }
+  }
+  payload-staging-media = {}
+}
