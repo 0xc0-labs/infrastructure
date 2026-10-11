@@ -23,8 +23,10 @@ jobs:
       tools: opentofu jq uv
       # The wrapper reads the tunnel token and the admin keys from this root.
       tofu-root: environments/prod
-      # The cluster first; the CI VMs last, one at a time, since their runners
-      # run this job, and a busy one is left for its next start.
+      # All at once, one job each, after a single approval of production. The
+      # CI VMs' playbook reconfigures the very runners these jobs run on, which
+      # is safe: it leaves a busy runner alone until its job ends (#204, #206;
+      # the github_runner role's README).
       playbooks: |
         playbooks/cluster.yml
         playbooks/vm-access.yml
