@@ -349,3 +349,25 @@ variable "r2_buckets" {
     error_message = "Two buckets share a public hostname."
   }
 }
+
+variable "mail_domains" {
+  description = "Domains mail is sent as through Resend, keyed by zone: the DKIM key Resend shows, the MAIL FROM subdomain and Resend's region, and the DMARC policy. The modules/mail-domain inputs."
+  type = map(object({
+    dkim = object({
+      selector = string
+      value    = string
+    })
+    mail_from = object({
+      subdomain = string
+      region    = string
+    })
+    dmarc = object({
+      p     = string
+      sp    = string
+      adkim = string
+      aspf  = string
+      rua   = string
+    })
+  }))
+  default = {}
+}

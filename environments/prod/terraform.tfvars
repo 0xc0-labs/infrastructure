@@ -205,3 +205,25 @@ r2_buckets = {
   }
   payload-staging-media = {}
 }
+
+# Mail sent as these domains, through Resend (workspace#92). The DMARC policy
+# is the one the operator set by hand, now with reports (#219).
+mail_domains = {
+  "0xc0.cc" = {
+    dkim = {
+      selector = "resend"
+      value    = "PENDING: the operator's, once Resend shows it"
+    }
+    mail_from = {
+      subdomain = "send"
+      region    = "eu-west-1"
+    }
+    dmarc = {
+      p     = "reject"
+      sp    = "reject"
+      adkim = "s"
+      aspf  = "s"
+      rua   = "dmarc@0xc0.cc"
+    }
+  }
+}
