@@ -113,6 +113,27 @@ removed {
   }
 }
 
+module "mail_domains" {
+  source   = "../../modules/mail-domain"
+  for_each = var.mail_domains
+
+  zone_name       = each.key
+  dkim            = each.value.dkim
+  sending_records = each.value.sending_records
+  dmarc           = each.value.dmarc
+}
+
+# Made by hand in the dashboard before OpenTofu held them (#219).
+import {
+  to = module.mail_domains["0xc0.cc"].cloudflare_dns_record.dmarc
+  id = "068d993d1c3f23e994211457c96476f8/3de3338e19a17b79539142f7f216a179"
+}
+
+import {
+  to = module.mail_domains["0xc0.cc"].cloudflare_dns_record.dkim_revoked
+  id = "068d993d1c3f23e994211457c96476f8/9fefc80df6a55b8ccc1dd7c9f5c374cb"
+}
+
 output "email_forwards_pending" {
   description = "By domain, the forwards still waiting for their destination's confirmation: they get their rule on the first apply after it."
   value       = { for zone, m in module.email_routing : zone => m.pending }
