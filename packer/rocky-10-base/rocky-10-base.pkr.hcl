@@ -23,10 +23,10 @@ source "proxmox-clone" "rocky" {
   clone_vm   = "rocky-10-cloud"
   full_clone = true
 
-  # 9100-9199. A rebuild deletes the old template first, freeing the ID.
-  vm_id                = 9102
-  vm_name              = "rocky-10-base"
-  template_name        = "rocky-10-base"
+  # Its own VMID and name by default; scripts/packer builds to the next ones.
+  vm_id                = var.vm_id
+  vm_name              = var.vm_name
+  template_name        = var.vm_name
   template_description = "Rocky Linux 10, the official cloud image with the base role. Built by Packer from packer/rocky-10-base, commit ${var.commit}."
 
   # The same size as the runner build: dnf upgrades the whole image.

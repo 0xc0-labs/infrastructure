@@ -29,8 +29,11 @@ Every template uses the `proxmox-clone` builder, from
 VMs use. `proxmox-iso` is only for a template that cannot start from the chain.
 
 **A fixed VMID, no version.** A template is found by name, but takes the next
-free VMID in 9100-9199 as `vm_id` (the raw images hold 9000-9099). A rebuild
-deletes the old template first, so it keeps the same one. VMs are full clones and ignore later
+free VMID in 9100-9149 as the default of `vm_id` in its `variables.pkr.hcl`,
+with its name as the default of `vm_name` (the raw images hold 9000-9099). A
+rebuild builds beside it, at `vm_id` + 50 as `<name>-next`, and only once that
+succeeds deletes the old template and clones the new one into the same VMID
+and name (`scripts/proxmox-template`). VMs are full clones and ignore later
 changes to their template, so a rebuild touches none: moving a VM onto the new
 template is bumping its `rebuild`.
 
@@ -46,9 +49,10 @@ workflow in `0xc0-labs/.github`): `validate` on every PR, and `build` on
 every merge to `main` that touches `packer/` or the roles, on the CI VMs,
 after the operator approves `production`. Only the templates the merge
 affects are rebuilt, one job per chain, in parallel. For each template, in
-`build-order`, `scripts/delete-template` deletes the old one by name (it
-refuses a name that is not a template), then Packer builds it again, recording
-the commit in its description. Locally: `scripts/packer <name> validate`.
+`build-order`, `scripts/packer <name> build` clears what a cut build left,
+builds `<name>-next`, recording the commit in its description, and swaps it in
+for the old one. `scripts/delete-template`, which the workflow still calls
+first, deletes nothing. Locally: `scripts/packer <name> validate`.
 The HashiCorp Packer skills in this session target AWS, Azure and HCP — none of
 them applies here. Do not follow `amazon-ebs` patterns.
 
@@ -99,9 +103,11 @@ misremember. Do not invent syntax; if unsure, look it up and say so.
 
 ## Rebuilds
 
-A rebuild deletes the old template first: there is no rolling back to it, and a
-failed build leaves no template until it is fixed. Running VMs are full clones
-and do not notice. A new template goes at the end of `build-order`, after the
+A rebuild replaces the old template only once the new one is built: a build
+that fails or is cut leaves the old one in place, and the next build clears
+the half-built `<name>-next`, or swaps in a finished one whose swap was cut
+(#207). There is no rolling back once it is swapped in. Running VMs are full
+clones and do not notice. A new template goes at the end of `build-order`, after the
 one it clones.
 
 ## Procedure

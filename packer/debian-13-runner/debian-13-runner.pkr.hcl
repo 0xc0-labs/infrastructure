@@ -26,10 +26,10 @@ source "proxmox-clone" "runner" {
   clone_vm   = "debian-13-base"
   full_clone = true
 
-  # 9100-9199. A rebuild deletes the old template first, freeing the ID.
-  vm_id                = 9101
-  vm_name              = "debian-13-runner"
-  template_name        = "debian-13-runner"
+  # Its own VMID and name by default; scripts/packer builds to the next ones.
+  vm_id                = var.vm_id
+  vm_name              = var.vm_name
+  template_name        = var.vm_name
   template_description = "Debian 13 base with the GitHub Actions runner and rootless BuildKit. Built by Packer from packer/debian-13-runner, commit ${var.commit}."
 
   cores           = 2
