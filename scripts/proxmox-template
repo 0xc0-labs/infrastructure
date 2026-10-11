@@ -18,8 +18,15 @@ pve() {  # pve <method> <path> [curl args...]
     "$@" "$pve_api$path"
 }
 
+# Every decision reads each node's own VM list, which loads every VM's config
+# and checks its process as it answers. Not /cluster/resources: it takes name,
+# status and template from what pvestatd last broadcast, seconds old, so right
+# after Packer makes a template it still shows a plain VM (#209).
 pve_vms() {  # pve_vms <jq filter on one VM>: the VMs matching it, as a JSON array
-  pve GET "/cluster/resources?type=vm" | jq -c "[.data[] | select($1)]"
+  local node
+  for node in $(pve GET /nodes | jq -r '.data[] | select(.status == "online") | .node'); do
+    pve GET "/nodes/$node/qemu" | jq -c --arg node "$node" '.data[] | . + {node: $node}'
+  done | jq -sc "map(select($1))"
 }
 
 pve_wait() {  # pve_wait <node> <upid> <what>
