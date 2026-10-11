@@ -130,6 +130,14 @@ module "public_tunnel" {
   ]])
 }
 
+# No name a public zone proxies accepts TLS below 1.2 (#215).
+module "zone_settings" {
+  source   = "../../modules/zone-settings"
+  for_each = toset(var.public_domains)
+
+  zone_name = each.key
+}
+
 module "admin_tunnel" {
   source = "../../modules/cloudflare-tunnel"
 
