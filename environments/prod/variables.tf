@@ -351,16 +351,17 @@ variable "r2_buckets" {
 }
 
 variable "mail_domains" {
-  description = "Domains mail is sent as through Resend, keyed by zone: the DKIM key Resend shows, the MAIL FROM subdomain and Resend's region, and the DMARC policy. The modules/mail-domain inputs."
+  description = "Domains mail is sent as through Resend, keyed by zone: the DKIM key and the other sending records Resend's DNS page shows, and the DMARC policy. The modules/mail-domain inputs."
   type = map(object({
     dkim = object({
       selector = string
       value    = string
     })
-    mail_from = object({
-      subdomain = string
-      region    = string
-    })
+    sending_records = list(object({
+      name    = string
+      type    = string
+      content = string
+    }))
     dmarc = object({
       p     = string
       sp    = string

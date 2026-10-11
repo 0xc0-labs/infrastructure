@@ -117,10 +117,10 @@ module "mail_domains" {
   source   = "../../modules/mail-domain"
   for_each = var.mail_domains
 
-  zone_name = each.key
-  dkim      = each.value.dkim
-  mail_from = each.value.mail_from
-  dmarc     = each.value.dmarc
+  zone_name       = each.key
+  dkim            = each.value.dkim
+  sending_records = each.value.sending_records
+  dmarc           = each.value.dmarc
 }
 
 # Made by hand in the dashboard before OpenTofu held them (#219).

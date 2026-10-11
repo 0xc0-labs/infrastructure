@@ -206,18 +206,19 @@ r2_buckets = {
   payload-staging-media = {}
 }
 
-# Mail sent as these domains, through Resend (workspace#92). The DMARC policy
-# is the one the operator set by hand, now with reports (#219).
+# Mail sent as these domains, through Resend (workspace#92), as its DNS page
+# shows them, with tracking off: no links record. The DMARC policy is the one
+# the operator set by hand, now with reports (#219).
 mail_domains = {
   "0xc0.cc" = {
     dkim = {
       selector = "resend"
-      value    = "PENDING: the operator's, once Resend shows it"
+      value    = "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDSmgzcZxX1PDQlrRm7f0ZpKS0Gno3OauyEtax0WLVIfY8TryIC3jOqMi2+AmXBEASoOSRpWNn+3O0uKs4xMlwy7kx4tSYqZNjFkh3P0KZC4QpDBwXbM6diWe2whtf+WXlE3jU1Tau0lNVYgz1nGw2WcB2Ydi1bAjK3bpqk2D5vSwIDAQAB"
     }
-    mail_from = {
-      subdomain = "send"
-      region    = "eu-west-1"
-    }
+    sending_records = [
+      { name = "rsend", type = "CNAME", content = "rsend-euw1.forge.rmta.net" },
+      { name = "send", type = "CNAME", content = "send.forge.rmta.net" },
+    ]
     dmarc = {
       p     = "reject"
       sp    = "reject"

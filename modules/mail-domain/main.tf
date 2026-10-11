@@ -7,9 +7,8 @@ data "cloudflare_zone" "main" {
 locals {
   # 3600 is what the two records made in the dashboard carry: an import keeps
   # them as they are (#219).
-  ttl       = 3600
-  comment   = "OpenTofu: infrastructure, modules/mail-domain"
-  mail_from = "${var.mail_from.subdomain}.${var.zone_name}"
+  ttl     = 3600
+  comment = "OpenTofu: infrastructure, modules/mail-domain"
 }
 
 resource "cloudflare_dns_record" "dkim" {
@@ -32,23 +31,16 @@ resource "cloudflare_dns_record" "dkim_revoked" {
   comment = local.comment
 }
 
-# The apex's MX and SPF are Email Routing's, for the mail the domain receives:
-# the bounces of the mail it sends go to a subdomain of their own.
-resource "cloudflare_dns_record" "mail_from_mx" {
-  zone_id  = data.cloudflare_zone.main.zone_id
-  name     = local.mail_from
-  type     = "MX"
-  content  = "feedback-smtp.${var.mail_from.region}.amazonses.com"
-  priority = 10
-  ttl      = local.ttl
-  comment  = local.comment
-}
+# On subdomains of their own, never the apex: its MX and SPF are Email
+# Routing's, for the mail the domain receives.
+resource "cloudflare_dns_record" "sending" {
+  for_each = { for r in var.sending_records : "${r.type} ${r.name}" => r }
 
-resource "cloudflare_dns_record" "mail_from_spf" {
   zone_id = data.cloudflare_zone.main.zone_id
-  name    = local.mail_from
-  type    = "TXT"
-  content = "v=spf1 include:amazonses.com ~all"
+  name    = "${each.value.name}.${var.zone_name}"
+  type    = each.value.type
+  content = each.value.content
+  proxied = false
   ttl     = local.ttl
   comment = local.comment
 }

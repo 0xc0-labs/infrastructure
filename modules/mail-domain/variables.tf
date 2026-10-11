@@ -21,16 +21,25 @@ variable "dkim" {
   }
 }
 
-variable "mail_from" {
-  description = "The MAIL FROM domain, a subdomain of zone_name (send for send.0xc0.cc), and the Amazon SES region the provider sends from (Resend's, e.g. eu-west-1), whose feedback MX it points at."
-  type = object({
-    subdomain = string
-    region    = string
-  })
+variable "sending_records" {
+  description = "The records the provider's DNS page asks for to send, besides DKIM, as it shows them: name relative to zone_name (send for send.0xc0.cc), type and content. Never proxied."
+  type = list(object({
+    name    = string
+    type    = string
+    content = string
+  }))
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.mail_from.subdomain)) && can(regex("^[a-z]{2}-[a-z]+-[0-9]$", var.mail_from.region))
-    error_message = "mail_from.subdomain is one label, and mail_from.region an AWS region such as eu-west-1."
+    condition = alltrue([
+      for r in var.sending_records :
+      contains(["CNAME", "TXT"], r.type) && can(regex("^[a-z0-9_-]+(\\.[a-z0-9_-]+)*$", r.name)) && r.name != "_dmarc" && !endswith(r.name, "_domainkey")
+    ])
+    error_message = "Each sending record is a CNAME or a TXT on a name under zone_name, neither _dmarc nor a DKIM selector: those have inputs of their own."
+  }
+
+  validation {
+    condition     = length(distinct([for r in var.sending_records : "${r.type} ${r.name}"])) == length(var.sending_records)
+    error_message = "Two sending records share a name and a type."
   }
 }
 
