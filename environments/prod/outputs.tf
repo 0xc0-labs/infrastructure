@@ -30,3 +30,8 @@ output "public_tunnel_id" {
   description = "The public tunnel's ID: external-dns (gitops, platform/traefik) points public names at <id>.cfargotunnel.com."
   value       = module.public_tunnel.id
 }
+
+output "r2_buckets" {
+  description = "Each bucket's S3 endpoint, where its application reaches it with its token, and the URL its files are served at, or null."
+  value       = { for name, b in module.r2_buckets : name => { endpoint = b.endpoint, public_url = b.public_url } }
+}

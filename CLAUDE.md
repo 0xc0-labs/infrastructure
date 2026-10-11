@@ -21,10 +21,10 @@ in OpenTofu. Use the `proxmox_sdn_*` resources — the
 `proxmox_virtual_environment_sdn_*` ones are deprecated. There is no second
 node, so no zone spans nodes.
 
-Cloudflare — tunnels, Zero Trust, DNS — lives in the same root,
-`environments/prod/`, alongside the node (operator decision, 2026-09-23):
-`prod` is the one environment, with everything that makes it up. Split by
-service only if the coupling ever gets in the way.
+Cloudflare — tunnels, Zero Trust, DNS, the applications' R2 buckets — lives
+in the same root, `environments/prod/`, alongside the node (operator
+decision, 2026-09-23): `prod` is the one environment, with everything that
+makes it up. Split by service only if the coupling ever gets in the way.
 
 ## What runs
 
