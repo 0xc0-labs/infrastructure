@@ -51,8 +51,7 @@ after the operator approves `production`. Only the templates the merge
 affects are rebuilt, one job per chain, in parallel. For each template, in
 `build-order`, `scripts/packer <name> build` clears what a cut build left,
 builds `<name>-next`, recording the commit in its description, and swaps it in
-for the old one. `scripts/delete-template`, which the workflow still calls
-first, deletes nothing. Locally: `scripts/packer <name> validate`.
+for the old one. Locally: `scripts/packer <name> validate`.
 The HashiCorp Packer skills in this session target AWS, Azure and HCP — none of
 them applies here. Do not follow `amazon-ebs` patterns.
 
