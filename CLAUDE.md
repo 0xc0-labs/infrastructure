@@ -1,5 +1,8 @@
 # infrastructure
 
+The workspace's `CLAUDE.md` holds the org's rules, which apply here too; this
+file holds only this repo's.
+
 Proxmox VE 9 on a Hetzner dedicated server (`pve-1`, `pve.0xc0.cc`), 2× NVMe
 in mdadm RAID 0, no ZFS. A single node. The host is router and
 firewall and holds `.1` in every zone; `eno1` keeps the public IP, each zone
@@ -41,15 +44,15 @@ addressing plan of every VM is in `docs/zones.md`, Machines.
 
 `docs/architecture.md` explains how the node, the zones, the flows, CI and the
 secrets fit together, with diagrams. Read it before a change that touches more
-than one of them. It explains; the code and the workspace `docs/design.md`
-decide.
+than one of them. It explains; the code and the workspace's design
+(`../docs/design/network.md`, `../docs/design/platform.md`) decide.
 
 ## Ansible
 
 `ansible/` configures what runs inside the VMs, after cloud-init. **Every
 playbook runs from the pipeline** (operator decision, 2026-09-29):
 `.github/workflows/ansible.yml` calls the reusable workflow in
-`0xc0-labs/.github`, which runs them in order with `--check --diff` on a
+`0xc0-labs/.github`, which runs them at once, with `--check --diff` on a
 PR, and for real on a merge to `main` once the operator approves. Nothing is
 applied from the laptop.
 
@@ -121,11 +124,11 @@ Locally, from `ansible/`: `uv run --frozen --group lint ansible-lint`.
 `rocky-10-base` from the raw `rocky-10-cloud`, with the `base` role, for the
 RKE2 nodes.
 Secrets and per-VM settings stay in Ansible. `scripts/packer <template>
-validate` locally. Every merge to `main` that touches `packer/` or the roles
-rebuilds them all in CI, after approval: each one built beside the old one,
-as `<name>-next`, and swapped in for it only once it succeeds, so a build that
-fails or is cut leaves the old template in place (`scripts/proxmox-template`,
-#207). Skill `packer-template`.
+validate` locally. A merge to `main` that touches a template or its roles
+rebuilds it, and every template cloning it, in CI, after approval: each one
+built beside the old one, as `<name>-next`, and swapped in for it only once it
+succeeds, so a build that fails or is cut leaves the old template in place
+(`scripts/proxmox-template`, #207). Skill `packer-template`.
 
 ## Network source of truth
 
@@ -135,19 +138,13 @@ transit matrix (`transit`) and the node's admin ports (`node_firewall`). The
 nothing is generated into a file. Validations in `variables.tf` enforce the
 invariants they can.
 
-`docs/zones.md` explains that data and keeps what cannot be code: the reserved
-ranges, the addressing plan, the Packer build addresses and the
-invariants. **Before proposing any IP or subnet, check it against that file.**
-There are five reserved ranges that can never be used (a second node, Hetzner
-Cloud, RKE2 pods and services, lab).
+`docs/zones.md` explains that data and keeps what cannot be code: the five
+reserved ranges that can never be used (a second node, Hetzner Cloud, RKE2
+pods and services, lab), the addressing plan, the Packer build addresses and
+the invariants.
 
 ## Hard rules
 
-- Everything written is in English: files, file names, comments, commits,
-  branches and PRs.
-- No work without an issue on the org project board. The PR links it
-  (`Closes #N` / `Refs owner/repo#N`) or the `issue` check fails. See the
-  workspace `CLAUDE.md`, section Tracking.
 - Every firewall rule comes from the `transit` matrix in `terraform.tfvars`
   (skill `firewall-matrix`), never written as a resource by hand. Its comment
   is `<from> -> <to>: <note>`, so any rule in Proxmox traces back to its line.
@@ -177,12 +174,6 @@ Cloud, RKE2 pods and services, lab).
 - No admin interface reaches the internet through the public tunnel: the
   portals, Vault and the Kubernetes API are reached only over WARP, through
   the admin tunnel. No portal is published behind Cloudflare Access either.
-- Secrets live in Vault, never in this repo (.github#6): CI reads them over
-  JWT with GitHub's OIDC token (role `infrastructure`), the scripts locally
-  with the operator's token (`scripts/vault-env`). A file holding sensitive
-  material is a bug, not a TODO.
-- Do not run `tofu apply`, `tofu destroy` or `ansible-playbook` without
-  `--check`. The human runs the apply after manual approval of the PR.
 - Idempotent playbooks: no `shell`/`command` without `creates:` or
   `changed_when:`.
 - Disks and volumes holding data carry `lifecycle { prevent_destroy = true }`.
@@ -212,35 +203,13 @@ Cloud, RKE2 pods and services, lab).
   build until it is swapped in. The raw cloud image is a pinned, dated
   build with its published checksum, never a `latest` link. A VM ignores later
   changes to its template; moving it onto a new one is bumping its `rebuild`.
-- OpenTofu is **always** written as modules, with Google's layout:
-  `modules/<name>/` holds the resources, `environments/<env>/` holds the roots,
-  which only call modules. A VM, a firewall and a network are modules; the
-  root wires them together.
-- Each root has its own state key, `0xc0/infrastructure/<env>.tfstate`, in
-  RustFS (`https://s3.0xc0.cc`, bucket `tfstate`). Never share a key. Keep a
-  root under a few dozen resources: every run refreshes all of it.
-- A resource that is the only one of its type is named `main`. Root values go
-  in `terraform.tfvars`; secrets come from the environment. Module READMEs
-  carry a generated inputs/outputs section (`terraform-docs`).
-- Plans and applies in CI use the reusable `tofu-plan` and `tofu-apply`
-  workflows from `0xc0-labs/.github`. Do not write local copies of them.
+- Keep a root under a few dozen resources: every run refreshes all of it.
 
 ## Before opening a PR
 
 If the change touches network, firewall, addressing or inventory, the
 session making it checks it against every invariant in `docs/zones.md`,
 Invariants, before opening the PR.
-
-## Repo policy
-
-`main` only. PR required. The apply needs manual approval.
-
-## The cluster's ingress and WAF
-
-Traefik with the Gateway API, and CrowdSec in front of it, both deployed by
-ArgoCD from `gitops` (operator decision, 2026-09-29). Their secrets come from
-Vault through Vault Secrets Operator, not from this repo. There is no
-open-appsec, and the load balancers stay layer 4.
 
 ## Skills in this repo
 
@@ -270,16 +239,3 @@ Caveats:
   here (paid). Ignore it if it fires.
 - The `packer@hashicorp` plugin is deliberately **not** enabled: its four
   skills are AWS, Azure, Windows and HCP registry. None applies to Proxmox.
-
-## Discarded — do not propose it
-
-WireGuard (Access+WARP covers it) · Coraza (the CRS needs hand-tuning;
-CrowdSec's virtual patching does not) · open-appsec (its Kubernetes
-integrations run on retired or unmaintained pieces) · kube-vip and MetalLB
-(the load balancer VMs keep the VIP) · BunkerWeb (config in SQLite) ·
-OPNsense and VyOS (fragile hop, immature providers) · VLAN zones (an SDN
-Simple zone covers one node) · Terraform Stacks (paid) · OpenBao (Vault's BSL
-does not affect this case) · Prometheus, Grafana, Loki and Tempo (OpenObserve
-covers the three signals).
-
-Full reasoning in `../docs/design.md`.

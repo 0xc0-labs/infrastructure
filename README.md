@@ -5,7 +5,7 @@ firewall, the VMs on it, and the RKE2 cluster they run.
 
 - **How it fits together:** [`docs/architecture.md`](docs/architecture.md)
 - **The network:** decided in [`environments/prod/terraform.tfvars`](environments/prod/terraform.tfvars), explained in [`docs/zones.md`](docs/zones.md)
-- **Why it is this way:** [`workspace/docs/design.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/design.md)
+- **Why it is this way:** the workspace's design, [`network`](https://github.com/0xc0-labs/workspace/blob/main/docs/design/network.md) and [`platform`](https://github.com/0xc0-labs/workspace/blob/main/docs/design/platform.md); what was discarded, [`discarded.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/discarded.md)
 
 ```
 environments/prod/      the root for the node — only calls modules
