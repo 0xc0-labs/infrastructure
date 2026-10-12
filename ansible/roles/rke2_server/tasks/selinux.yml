@@ -54,4 +54,3 @@
       ansible.builtin.command:
         cmd: semodule -i /usr/local/share/selinux/0xc0/container_logs_watch.pp
       changed_when: true
-
