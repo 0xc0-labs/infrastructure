@@ -2,18 +2,21 @@ argument_specs:
   main:
     short_description: Ephemeral GitHub Actions runners registered just in time by a GitHub App
     description:
-      - Installs the runner pinned by version and checksum, one copy per
-        instance and version, and runs each as a systemd service from its
-        current copy. A change restarts only the idle runners; a busy one
-        starts on it when its job ends, so the job applying it is never cut. Before every start, a
-        root-only step uses the GitHub App to fetch a just-in-time config, so
-        each runner takes one job, deregisters and starts clean.
+      - Installs the runner pinned by version and checksum, once, root's,
+        and runs each instance as a systemd service from a state directory
+        of its own, recreated on every start, where the install is mounted
+        read only. The runner never updates itself. A change restarts only
+        the idle runners; a busy one starts on it when its job ends, so the
+        job applying it is never cut. Before every start, a root-only step
+        uses the GitHub App to fetch a just-in-time config, which reaches the
+        runner as a systemd credential, so each runner takes one job,
+        deregisters and starts clean.
       - The App's key never reaches the VM. That step logs in to Vault with an
         AppRole secret ID and has Transit sign the App's JWT.
       - Each instance's jobs run as an unprivileged user of its own,
         runner-<n>, which cannot read the secret ID, nor anything of the other
-        instance's. Its work folder and home are emptied before and after
-        every job.
+        instance's. Its state directory, with the work folder, and its home
+        are emptied before and after every job.
       - Each instance has its own rootless BuildKit, run by RootlessKit as a
         user of its own, buildkit-<n>, with its own subordinate IDs. The
         runner starts it empty before every job and stops it after, removing
@@ -47,7 +50,7 @@ argument_specs:
         description: Transit key holding the App's private key.
       github_runner_version:
         type: str
-        default: "2.337.0"
+        default: "2.338.0"
         description: Runner release to install.
       github_runner_tarball_sha256:
         type: str
@@ -102,14 +105,14 @@ argument_specs:
   install:
     short_description: What a runner VM needs, without the runners
     description:
-      - The packages, the runner tarball pinned by version and checksum, and
-        its system dependencies; BuildKit and RootlessKit pinned the same way,
+      - The packages, the runner pinned by version and checksum, unpacked
+        once and root's, and its system dependencies; BuildKit and RootlessKit pinned the same way,
         uidmap, and the kernel setting rootless builds need. No App, no key, no
         users, no units; this is what the runner template bakes, with Packer.
     options:
       github_runner_version:
         type: str
-        default: "2.337.0"
+        default: "2.338.0"
         description: Runner release to install.
       github_runner_tarball_sha256:
         type: str

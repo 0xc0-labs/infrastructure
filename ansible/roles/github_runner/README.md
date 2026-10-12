@@ -12,19 +12,37 @@ Each VM runs `github_runner_count` instances, two. Instance `<n>` is:
 | What | Where |
 |---|---|
 | The runner, one job and then a fresh start, as `runner-<n>` | `github-runner@<n>.service` |
-| Its copy of the runner, and the job's work folder | `/opt/actions-runner/<n>`, `_work` inside |
+| The runner's install, root's, the same for every instance | `/opt/actions-runner/<version>` |
+| Its state: what the runner writes, and the job's work folder | `/var/lib/github-runner/<n>`, `_work` inside |
 | The job's `$HOME` | `/home/runner-<n>` |
 | Its BuildKit, under RootlessKit, as `buildkit-<n>` | `github-runner-buildkit@<n>.service` |
 | BuildKit's socket, the job's `$BUILDKIT_HOST` | `/run/github-runner-buildkit/<n>/buildkitd.sock` |
 | BuildKit's state: snapshots, cache, temporary files | `/var/lib/github-runner-buildkit/<n>` |
 
-Before its runner starts, as root: older copies of the runner pruned, the work
-folder and the home emptied, BuildKit restarted empty, and a just-in-time
+Before its runner starts, as root: the runner versions no instance runs from
+removed (`github-runner-prune`), the state directory and the home recreated
+empty (`github-runner-reset`), BuildKit restarted empty, and a just-in-time
 config fetched through Vault (`github-runner-jit`). When the job ends and the
-runner exits: BuildKit stopped and its state removed, the work folder and the
-home emptied again. `/tmp` and `/var/tmp` are the unit's own, and its
+runner exits: BuildKit stopped and its state removed, the state directory and
+the home emptied again. `/tmp` and `/var/tmp` are the unit's own, and its
 `/dev/shm` and IPC objects go when it stops. So nothing a job builds or caches
 on the VM outlives it.
+
+Nor does anything a job writes reach the runner that takes the next job:
+
+- The runner takes the parent of its `bin/` as its root, and writes there.
+  The unit mounts the install's `bin/` and `externals/` read only inside the
+  state directory (`BindReadOnlyPaths=`), so the state directory is the
+  runner's root, and the install is not the job's to change.
+- The rest of the file system is read only to the job too
+  (`ProtectSystem=strict`), but for the state directory, the home and its
+  BuildKit's socket: what it writes is under the first two, which the next
+  start recreates.
+- The just-in-time config is on no command line. Only root can read the file
+  `github-runner-jit` leaves; systemd hands it to the runner as a credential
+  (`LoadCredential=`), and `github-runner-listen` passes it in the
+  environment, which the runner clears before it starts a job, so no step
+  inherits it.
 
 Nothing reaches the other instance either: the two run as different users,
 neither can open the other's socket, home or work folder, and a job sees no
@@ -43,18 +61,37 @@ A busy instance is left alone until its job ends: no restart, and nothing of
 its own changes owner or moves:
 
 - the handler restarts only the idle instances (`github-runner-restart-idle`);
-- a copy of the runner is created or unpacked only when it is missing, and
-  only a new copy is handed to the instance's user;
-- the link to the current copy may move, but its owner is set on the link
-  alone (`follow: false`): set through it, it would land on the copy a busy
-  runner is running from and lock that runner out (#204);
+- a new runner version unpacks beside the one a busy instance runs from, and
+  goes only once no instance runs from it: `github-runner-prune` reads which
+  version each running listener has mounted;
 - the busy instance picks a change up when its job ends: its unit stops,
-  `github-runner-reset` hands its copy to its user, and it starts again on
-  the new unit.
+  `github-runner-reset` empties its state, and it starts again on the new
+  unit.
 
-A change to the role keeps to this: whatever touches an instance's copy, home
-or unit while it may be running a job is a bug, and check mode does not show
-it when the task is skipped there.
+A change to the role keeps to this: whatever touches the install an instance
+runs from, or its state, home or unit, while it may be running a job is a bug
+(#204), and check mode does not show it when the task is skipped there.
+
+## A new runner release
+
+The runner never updates itself. A just-in-time runner registers with updates
+disabled (`DisableUpdate` in its `.runner`), and its install is read only
+besides. GitHub refuses jobs to a runner 30 days behind its latest release:
+the listener then exits 7 (`ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE`),
+and its unit stays failed rather than fetching a new config every ten seconds.
+Past those 30 days, no runner here takes a job, the one that would deploy a
+bump included.
+
+So each release gets an issue, until Renovate bumps it:
+
+1. `github_runner_version` and `github_runner_tarball_sha256` in
+   `defaults/main.yml`, and the version's default in `meta/argument_specs.yml`.
+   The checksum is the `actions-runner-linux-x64-<version>.tar.gz` line of the
+   release's notes, the same as that asset's `digest` in GitHub's API.
+2. Its merge runs `playbooks/vm-ci.yml`, after approval: the idle runners
+   restart onto the new version, a busy one when its job ends, and the older
+   version goes with the last instance running it. The same merge rebuilds the
+   `debian-13-runner` template, which bakes the install.
 
 ## Building an image
 
