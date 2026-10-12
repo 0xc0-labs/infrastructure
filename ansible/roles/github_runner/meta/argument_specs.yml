@@ -4,7 +4,7 @@ argument_specs:
     description:
       - Installs the runner pinned by version and checksum, once, root's,
         and runs each instance as a systemd service from a state directory
-        of its own, recreated on every start, where the install is mounted
+        of its own, emptied on every start, where the install is mounted
         read only. The runner never updates itself. A change restarts only
         the idle runners; a busy one starts on it when its job ends, so the
         job applying it is never cut. Before every start, a root-only step
