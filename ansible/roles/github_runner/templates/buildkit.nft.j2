@@ -1,0 +1,18 @@
+#!/usr/sbin/nft -f
+# {{ ansible_managed }}
+# Where instance {{ item }}'s builds may connect (#203). slirp4netns opens each
+# of their connections on the VM as buildkit-{{ item }}: the resolver, for DNS,
+# and the internet, never the VM nor the network. A table of its own, which
+# its BuildKit loads on every start, and no other rule of the VM's.
+table inet github_runner_buildkit_{{ item }}
+delete table inet github_runner_buildkit_{{ item }}
+
+table inet github_runner_buildkit_{{ item }} {
+  chain output {
+    type filter hook output priority filter; policy accept;
+    meta skuid != "buildkit-{{ item }}" accept
+    ip daddr 127.0.0.53 meta l4proto { tcp, udp } th dport 53 accept
+    ip daddr { 127.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } reject with icmpx admin-prohibited
+    ip6 daddr { ::1, fc00::/7, fe80::/10 } reject with icmpx admin-prohibited
+  }
+}

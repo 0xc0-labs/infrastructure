@@ -24,10 +24,16 @@ Environment=TMPDIR=/var/lib/github-runner-buildkit/%i/tmp
 # and removed after it stops.
 ExecStartPre=+/usr/bin/rm -rf /var/lib/github-runner-buildkit/%i
 ExecStartPre=+/usr/bin/install -d -o buildkit-%i -g buildkit-%i -m 0700 /var/lib/github-runner-buildkit/%i /var/lib/github-runner-buildkit/%i/tmp
-# RootlessKit maps the user's subordinate IDs (newuidmap) and shares the VM's
-# network, so a build reaches what its job reaches and nothing listens: the
-# daemon answers on its Unix socket alone.
-ExecStart=/opt/rootlesskit/{{ github_runner_rootlesskit_version }}/rootlesskit --net=host --port-driver=none /opt/buildkit/{{ github_runner_buildkit_version }}/bin/buildkitd --root /var/lib/github-runner-buildkit/%i/root --addr unix:///run/github-runner-buildkit/%i/buildkitd.sock
+# Where its builds may connect, loaded before the daemon starts: if it fails,
+# so does this unit, and no build runs without it (#203).
+ExecStartPre=+/usr/sbin/nft -f /etc/github-runner/buildkit-%i.nft
+# RootlessKit maps the user's subordinate IDs (newuidmap) and gives the daemon
+# a network of its own, through slirp4netns: the internet, and DNS through
+# slirp's forwarder to the VM's resolver, but not the VM's loopback
+# (--disable-host-loopback), and the rules above for the rest of the network.
+# /etc is copied up so RootlessKit can point resolv.conf at that forwarder.
+# Nothing listens: the daemon answers on its Unix socket alone.
+ExecStart=/opt/rootlesskit/{{ github_runner_rootlesskit_version }}/rootlesskit --net=slirp4netns --slirp4netns-sandbox=auto --slirp4netns-seccomp=auto --disable-host-loopback --copy-up=/etc --port-driver=none /opt/buildkit/{{ github_runner_buildkit_version }}/bin/buildkitd --root /var/lib/github-runner-buildkit/%i/root --addr unix:///run/github-runner-buildkit/%i/buildkitd.sock
 ExecStopPost=+/usr/bin/rm -rf /var/lib/github-runner-buildkit/%i
 KillMode=mixed
 UMask=0077

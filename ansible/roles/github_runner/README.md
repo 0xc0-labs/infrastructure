@@ -151,8 +151,13 @@ What to keep in mind:
   BuildKit pulls from Docker Hub for every build, as it does a Dockerfile's
   base images.
 - **One platform**, the VM's: no QEMU, so no emulated `linux/arm64`.
-- **A build shares the VM's network**: its `RUN` steps reach what the job
-  reaches, and no more.
+- **A build reaches the internet alone** (#203): its `RUN` steps, and
+  BuildKit's pulls and pushes, go out through a network of BuildKit's own
+  (Rootless, below). They resolve names, and reach registries and package
+  mirrors, but nothing on the VM, not even its loopback, and nothing inside
+  the network: no zone, no Vault, no node. A build that needs something
+  inside gets it as a build secret or from the context, never by
+  connecting to it.
 - `docker buildx`, if a workflow brings it, drives the same daemon with
   `docker buildx create --driver remote "$BUILDKIT_HOST"`. The runner installs
   neither Docker nor Buildx.
@@ -166,6 +171,7 @@ subordinate IDs of that user's own, from `github_runner_buildkit_subid_start`
 needs, and what installs it:
 
 - `uidmap`: `newuidmap` and `newgidmap`, which map those IDs (`install`).
+- `slirp4netns` and `nftables`, for BuildKit's network, below (`install`).
 - `kernel.unprivileged_userns_clone = 1`, Debian's default, kept in
   `/etc/sysctl.d/60-github-runner.conf` (`install`).
 - `overlayfs` in a user namespace, in the kernel since 5.11: no
@@ -179,6 +185,21 @@ needs, and what installs it:
 
 `newuidmap` is setuid, which is why BuildKit is a unit of its own: the runner,
 and every job, keeps `NoNewPrivileges`, and a different user runs the daemon,
-which the job cannot trace or signal. RootlessKit shares the VM's network
-(`--net=host`) and no port: BuildKit answers on its Unix socket alone, and
-nothing listens on the network that did not before.
+which the job cannot trace or signal.
+
+BuildKit has a network of its own (#203). RootlessKit gives the daemon a
+network namespace, connected to the VM's through `slirp4netns`, a user-mode
+stack that opens each connection on the VM as `buildkit-<n>`:
+
+- `--disable-host-loopback` keeps it off the VM's loopback. DNS still works:
+  slirp's forwarder takes the namespace's queries to the VM's resolver, and
+  RootlessKit points the namespace's `resolv.conf` at it (`--copy-up=/etc`).
+- An nftables table per instance, `github_runner_buildkit_<n>`
+  (`/etc/github-runner/buildkit-<n>.nft`), rejects every connection of
+  `buildkit-<n>` to loopback, private, shared and link-local addresses, but
+  DNS to the resolver. BuildKit's unit loads it before the daemon starts,
+  so no build runs without it, and a busy instance keeps the rules its build
+  started with. The table is the role's alone: no other rule of the VM's is
+  touched, and Debian leaves `nftables.service` disabled.
+- No port: BuildKit answers on its Unix socket alone, and nothing listens on
+  the network that did not before.

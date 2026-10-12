@@ -21,7 +21,8 @@ argument_specs:
         user of its own, buildkit-<n>, with its own subordinate IDs. The
         runner starts it empty before every job and stops it after, removing
         what it built. The job reaches it only through its Unix socket, at
-        $BUILDKIT_HOST (README.md).
+        $BUILDKIT_HOST, and its builds reach the internet alone, through a
+        network of their own (README.md).
     options:
       github_runner_app_id:
         type: str
@@ -107,7 +108,8 @@ argument_specs:
     description:
       - The packages, the runner pinned by version and checksum, unpacked
         once and root's, and its system dependencies; BuildKit and RootlessKit pinned the same way,
-        uidmap, and the kernel setting rootless builds need. No App, no key, no
+        uidmap, slirp4netns, nftables, and the kernel setting rootless builds
+        need. No App, no key, no
         users, no units; this is what the runner template bakes, with Packer.
     options:
       github_runner_version:

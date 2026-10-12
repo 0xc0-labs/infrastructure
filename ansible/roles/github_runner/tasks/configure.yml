@@ -132,6 +132,17 @@
   loop_control:
     label: "{{ item.0 }}/{{ item.1 }}"
 
+# Loaded by each instance's BuildKit when it starts, not here: a busy
+# instance's build keeps the network it started with (#204).
+- name: Write each BuildKit's network rules
+  ansible.builtin.template:
+    src: buildkit.nft.j2
+    dest: "/etc/github-runner/buildkit-{{ item }}.nft"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ range(1, github_runner_count + 1) | list }}"
+
 # Started and stopped by its runner, around every job: never enabled itself.
 - name: Install the BuildKit unit
   ansible.builtin.template:

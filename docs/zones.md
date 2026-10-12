@@ -161,6 +161,6 @@ its PR. Those marked **(code)** are also validations in
    committed and holds no secret; no other `.tfvars` file is committed.
 10. Nothing the CI runners run listens on the network. Each runner instance's
     BuildKit answers on a Unix socket that only its own jobs open, and its
-    builds share the VM's network, so a build reaches what a job reaches and
-    nothing more (`ansible/roles/github_runner/README.md`). A runner, or its
+    builds reach the internet alone: nothing on the VM, nor inside the
+    network (#203; `ansible/roles/github_runner/README.md`). A runner, or its
     BuildKit, that opens a port is a **critical** finding.
