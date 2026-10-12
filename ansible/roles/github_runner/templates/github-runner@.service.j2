@@ -5,8 +5,6 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-# A user per instance: the other instance's job cannot read this one's files,
-# environment or BuildKit.
 User=runner-%i
 Group=runner-%i
 # The group that opens this instance's BuildKit socket, and no other.
@@ -16,12 +14,8 @@ Environment=BUILDKIT_HOST=unix:///run/github-runner-buildkit/%i/buildkitd.sock
 # (RestartPreventExitStatus=) rather than asking GitHub for a config every
 # ten seconds (README.md, A new runner release).
 Environment=ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE=1
-# "+" runs these as root: the runner versions nothing runs from removed, an
-# empty state directory and home, an empty BuildKit, then a fresh
-# just-in-time config fetched through Vault with the AppRole secret ID, which
-# the runner user cannot read.
-# A BuildKit that does not start fails the job that builds an image, not the
-# runner: the jobs that would fix it run here too.
+# "+" runs these as root (README.md, One instance). "-": a BuildKit that does
+# not start fails the job that builds an image, not the runner.
 ExecStartPre=+/usr/local/libexec/github-runner-prune %i {{ github_runner_version }}
 ExecStartPre=+/usr/local/libexec/github-runner-reset %i
 ExecStartPre=-+/usr/bin/systemctl restart github-runner-buildkit@%i.service
@@ -37,8 +31,6 @@ SetCredential=jit:none
 BindReadOnlyPaths=/opt/actions-runner/{{ github_runner_version }}/bin:/var/lib/github-runner/%i/bin
 BindReadOnlyPaths=/opt/actions-runner/{{ github_runner_version }}/externals:/var/lib/github-runner/%i/externals
 ExecStart=/usr/local/libexec/github-runner-listen %i
-# When the job ends, nothing it built or cached stays behind: its BuildKit
-# stops and empties, and so do its state directory and home.
 ExecStopPost=-+/usr/bin/systemctl stop github-runner-buildkit@%i.service
 ExecStopPost=+/usr/local/libexec/github-runner-reset %i
 # One job, then the runner exits and deregisters: start the next one.
@@ -47,11 +39,8 @@ RestartSec=10s
 RestartPreventExitStatus=7
 NoNewPrivileges=yes
 PrivateTmp=yes
-# Its /dev/shm and IPC objects go when it stops.
 RemoveIPC=yes
-# Other users' processes, and their command lines, are not visible to the job.
 ProtectProc=invisible
-# The job writes its state, its home and to its BuildKit's socket, nothing else.
 # Every command of the unit, the "+" ones included, gets these mounts, so
 # none may need a path one of them creates: systemd creates the state
 # directory before any of them, and the rest may be missing (#227).

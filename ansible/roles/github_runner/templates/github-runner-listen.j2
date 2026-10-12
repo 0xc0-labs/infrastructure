@@ -4,10 +4,8 @@
 # directory. What run.sh would add, restarting it and reading its exit code,
 # is systemd's here (github-runner@.service).
 #
-# The just-in-time config goes in through the environment, from the
-# credential systemd loaded for this start: the runner reads it from there and
-# removes it before it starts a job. On the command line, any process on the
-# VM could read it.
+# The just-in-time config goes in through the environment, never the command
+# line: the runner removes it before it starts a job (README.md, One instance).
 set -euo pipefail
 cd "/var/lib/github-runner/$1"
 ACTIONS_RUNNER_INPUT_JITCONFIG=$(<"$CREDENTIALS_DIRECTORY/jit")

@@ -1,6 +1,4 @@
-# The default jurisdiction, not eu: an eu bucket answers only at the .eu.
-# endpoint, and every resource naming it needs the jurisdiction too, which the
-# provider does not carry through (cloudflare/terraform-provider-cloudflare#5144).
+# The default jurisdiction, not eu (README.md).
 resource "cloudflare_r2_bucket" "main" {
   account_id = var.account_id
   name       = var.name
@@ -28,8 +26,7 @@ data "cloudflare_zone" "main" {
   }
 }
 
-# Cloudflare makes the hostname's DNS record and certificate itself. Neither
-# this nor the managed domain can be imported: nothing is made by hand first.
+# Cloudflare makes its DNS record and certificate itself (README.md).
 resource "cloudflare_r2_custom_domain" "main" {
   count = var.custom_domain == null ? 0 : 1
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # {{ ansible_managed }}
 # Fetches a just-in-time config for runner instance $1 and leaves it where only
-# root can read it. Runs as root, before every start. The App's key
-# never comes here: Vault signs the App's JWT with it (Transit), after an
-# AppRole login with a secret ID only root can read, which jobs never see.
+# root can read it. Runs as root, before every start. Vault signs the App's JWT
+# (Transit): the App's key never comes here.
 #
 # No secret goes on a command line, where any process on the VM could read it
 # (/proc/<pid>/cmdline), a job on the other instance included: request bodies
@@ -74,8 +73,7 @@ body=$(jq -n --arg name "$(hostname)-$instance-$now" --argjson group "$group_id"
 config=$(gh_api POST "/orgs/$GITHUB_ORG/actions/runners/generate-jitconfig" "$token" -d "$body" |
   jq -r .encoded_jit_config)
 
-# Root's alone: systemd reads it as root and hands it to the runner as a
-# credential (LoadCredential=), and github-runner-reset removes it.
+# Root's alone: systemd hands it to the runner as a credential (LoadCredential=).
 install -d -o root -g root -m 0755 /run/github-runner
 install -d -o root -g root -m 0700 "/run/github-runner/$instance"
 install -o root -g root -m 0600 /dev/null "/run/github-runner/$instance/jit"

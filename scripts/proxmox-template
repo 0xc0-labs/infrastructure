@@ -1,11 +1,6 @@
-# Replaces a Proxmox template only once its next build exists (#207).
-# Sourced by scripts/packer, after vault_env_proxmox.
-#
-# A template keeps one VMID across rebuilds, vm_id in its variables.pkr.hcl,
-# 9100-9149. Its build goes to vm_id + 50, under "<name>-next", and only once
-# Packer has finished it is the old template deleted and the new one cloned
-# into the fixed VMID under the template's name. A build that fails or is cut
-# leaves the old template where it was.
+# Replaces a Proxmox template only once its next build exists (#207;
+# docs/architecture.md, Templates). Sourced by scripts/packer, after
+# vault_env_proxmox.
 #
 # The API token goes in a header through a file descriptor, never on a command
 # line, where any process on the runner's VM could read it.

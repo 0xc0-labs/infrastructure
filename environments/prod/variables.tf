@@ -16,8 +16,7 @@ variable "zones" {
     snat  = bool
   }))
 
-  # Every zone lives in 10.10.0.0/16, so none can land on a reserved range
-  # (10.11/16, 10.20/16, 10.42/16, 10.43/16, 10.66.66/24).
+  # So that no zone lands on a reserved range (docs/zones.md).
   validation {
     condition = alltrue([
       for z in values(var.zones) :
@@ -123,7 +122,7 @@ variable "vms" {
     cores        = optional(number, 1)
     memory_mb    = optional(number, 1024)
     disk_size_gb = optional(number, 8)
-    # The QEMU CPU model. Rocky 10 needs x86-64-v3.
+    # Rocky 10 needs x86-64-v3.
     cpu_type = optional(string, "x86-64-v2-AES")
     # Bump to recreate the VM from its template. prevent_destroy, in the vm
     # module, has to be lifted in the same PR.
@@ -193,7 +192,7 @@ variable "transit" {
     error_message = "data initiates nothing: no transit entry from data may have a destination."
   }
 
-  # SSH from named CI VMs is the one exception (operator decision, 2026-09-29).
+  # Operator decision, 2026-09-29.
   validation {
     condition = alltrue([
       for e in var.transit :
@@ -203,8 +202,6 @@ variable "transit" {
     error_message = "Nothing may initiate towards mgmt from another zone, except SSH (22) from named CI VMs (sources)."
   }
 
-  # A source is a VM of the vms map or a machine of the cluster (an LB, a
-  # server or an agent), in the entry's from zone.
   validation {
     condition = alltrue(flatten([
       for e in var.transit : [for s in e.sources :
@@ -215,8 +212,7 @@ variable "transit" {
     error_message = "Every transit source must be a VM of the vms map or a cluster machine, in the entry's from zone."
   }
 
-  # Invariant: from the internet the node accepts only break-glass SSH, which
-  # the Hetzner firewall keeps closed until the operator opens it.
+  # docs/zones.md, Invariants, 6.
   validation {
     condition     = alltrue([for e in var.transit : !(e.from == "internet" && contains(e.to, "node")) || (length(e.ports) == 1 && e.ports[0] == "22")])
     error_message = "From the internet the node accepts only SSH (22), as break-glass: Traefik and the API are reached over WARP."
@@ -293,7 +289,6 @@ variable "cluster" {
     error_message = "No cluster machine may take a VIP, and the two VIPs must differ."
   }
 
-  # One namespace and one address plan with vms, the VIPs included.
   validation {
     condition = length(setintersection(keys(var.vms), keys(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes)))) == 0 && length(distinct(concat(
       [for v in values(var.vms) : v.ip],

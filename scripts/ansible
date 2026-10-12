@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Runs ansible-playbook with the tunnel tokens and the admin SSH keys read
-# from the OpenTofu state, and the playbooks' secrets read from Vault
-# (scripts/vault-env), straight into the environment — never onto disk.
+# Runs ansible-playbook with its secrets in the environment, never on disk.
 # Usage: scripts/ansible playbooks/vm-access.yml --check --diff
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -15,21 +13,17 @@ vault_env RKE2_TOKEN infrastructure/rke2 token
 # ArgoCD's, under platform/: it is ArgoCD's secret, granted to this CI by name.
 vault_env ARGOCD_ADMIN_PASSWORD_BCRYPT argocd/admin password_bcrypt platform
 
-# The admin tunnel's, for its connectors on vm-access-01 and vm-access-02.
 ADMIN_TUNNEL_TOKEN="$(tofu -chdir=environments/prod output -raw admin_tunnel_token)"
 export ADMIN_TUNNEL_TOKEN
 
-# The public tunnel's, for its connectors on the load balancers.
 PUBLIC_TUNNEL_TOKEN="$(tofu -chdir=environments/prod output -raw public_tunnel_token)"
 export PUBLIC_TUNNEL_TOKEN
 
-# The admin keys, as JSON: vm_admin_ssh_keys in terraform.tfvars is the one
-# list, for cloud-init and for the base role alike.
+# vm_admin_ssh_keys is the one list, for cloud-init and the base role alike.
 ADMIN_SSH_KEYS="$(tofu -chdir=environments/prod output -json vm_admin_ssh_keys)"
 export ADMIN_SSH_KEYS
 
-# The plays go one host at a time (serial), so a bad change stops at the first
-# and the other keeps the service. A dry run changes nothing: every host at once.
+# A dry run changes nothing: every host at once, not one at a time (serial).
 case " $* " in
   *" --check "*) set -- -e play_serial=100% "$@" ;;
 esac

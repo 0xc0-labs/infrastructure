@@ -4,8 +4,7 @@ nodes = ["pve-1"]
 
 sdn_zone_id = "homelab"
 
-# The zones, explained in docs/zones.md. Keys are VNet IDs (Proxmox: up
-# to 8 letters and digits); alias is the name everything else uses.
+# Keyed by VNet ID, at most 8 letters and digits (docs/zones.md, Zones).
 zones = {
   mgmt = {
     alias = "mgmt"
@@ -40,7 +39,7 @@ templates = {
     image_url          = "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base-10.2-20260525.0.x86_64.qcow2"
     image_checksum     = "9fc9e9ff16888bb68ac39b0392e25c9c92684d50c85f1cce6ab549363bbc4b48"
     checksum_algorithm = "sha256"
-    # The image's virtual size is 10 GiB, and Proxmox never shrinks a disk.
+    # The image's virtual size.
     disk_size_gb = 10
     bridge       = "mgmt"
   }
@@ -51,7 +50,7 @@ zero_trust_team       = "0xc0"
 zones_cidr            = "10.10.0.0/16"
 
 vm_admin_user = "ops"
-# The operator's and CI's (private half in Vault, ci/infrastructure/ssh).
+# CI's private half is in Vault, ci/infrastructure/ssh.
 vm_admin_ssh_keys = [
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO0Sq1ydjDPRC82QwtxDWSxk2ci/E2bChEJCwm665nzZ sergioaten@0xc0-homelab 2026-09-22",
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBfmJpvE1msYS0+VYbfP2M8y0+w2DzuA7LLe5k8GvSlP ci@0xc0-homelab 2026-09-29",
@@ -143,8 +142,7 @@ cluster = {
   }
 }
 
-# Every flow the firewall allows (docs/zones.md). An empty `to` means the zone
-# initiates nothing. Notes become rule comments, plain ASCII.
+# Every flow the firewall allows (docs/zones.md, Transit matrix).
 transit = [
   { from = "mgmt", to = ["mgmt"], ports = [22], note = "between the vm-access connectors; a WARP session can leave from either one" },
   { from = "mgmt", to = ["ci"], ports = [22], note = "admin SSH, through the vm-access tunnel" },
@@ -159,8 +157,6 @@ transit = [
   { from = "platform", to = ["platform"], ports = ["2379-2381", 6443, 9099, 9345, 10250, 10257, 10259, "30000-32767"], note = "the cluster: etcd and its metrics, API, Canal health, supervisor, kubelet, controller-manager and scheduler metrics, NodePorts; the LB towards the nodes" },
   { from = "platform", to = ["platform"], proto = "udp", ports = [8472], note = "Canal VXLAN between the cluster nodes" },
   { from = "platform", to = ["platform"], proto = "vrrp", ports = [], note = "keepalived between the two LB VMs" },
-  # Each LB runs a public tunnel connector that targets the public VIP, held by
-  # either LB (infrastructure#187).
   { from = "platform", to = ["platform"], ports = [443], sources = ["vm-lb-01", "vm-lb-02"], note = "the public tunnel's connectors towards the public VIP, whichever LB holds it" },
   { from = "platform", to = ["node"], ports = [9100], note = "node metrics" },
   { from = "platform", to = ["internet"], ports = [443], note = "egress, alerts to the phone among it" },
@@ -191,9 +187,7 @@ public_domains = ["0xc0.cc", "offby1.cc", "artistlabco.com"]
 # The WARP-only path's names (operator decision, 2026-09-30).
 internal_domains = ["int.0xc0.cc"]
 
-# The applications' files (operator decision, 2026-10-11; workspace#88). The
-# application reads its bucket with an R2 token scoped to it, kept in Vault.
-# Staging's media has no hostname: the application serves it, over WARP.
+# docs/architecture.md, The applications' files (workspace#88).
 r2_buckets = {
   payload-media = {
     public = {
@@ -207,8 +201,8 @@ r2_buckets = {
 }
 
 # Mail sent as these domains, through Resend (workspace#92), as its DNS page
-# shows them, with tracking off: no links record. The DMARC policy is the one
-# the operator set by hand, now with reports (#219).
+# shows them, with tracking off: no links record. The DMARC policy is the
+# operator's (#219).
 mail_domains = {
   "0xc0.cc" = {
     dkim = {

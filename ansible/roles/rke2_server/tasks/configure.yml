@@ -50,8 +50,8 @@
   no_log: true
   notify: Restart rke2-server
 
-# Left empty by the removed cluster_secrets role. This task goes once it has
-# run on every server.
+# Left by the cluster_secrets role (#155). This task goes once it has run on
+# every server.
 - name: Remove the old boot secrets manifest
   ansible.builtin.file:
     path: /var/lib/rancher/rke2/server/manifests/cluster-secrets.yaml

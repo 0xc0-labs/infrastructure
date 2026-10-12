@@ -1,6 +1,6 @@
 # The cluster's vip in terraform.tfvars.
 platform_vip: 10.10.4.10
-# platform_internal_vip is in vms.yml: the CI VMs need it too.
+# platform_internal_vip is in vms.yml.
 platform_prefix_length: 24
 
 # One RKE2 version for the whole cluster, so no agent runs ahead of or behind

@@ -1,8 +1,7 @@
 # {{ ansible_managed }}
 [Unit]
 Description=Rootless BuildKit for GitHub Actions runner %i
-# Started empty by github-runner@%i before every job and stopped after it.
-# Never enabled on its own.
+# Started and stopped by github-runner@%i, around every job; never enabled.
 
 [Service]
 # buildkitd says when it is ready, from inside RootlessKit's namespaces: not the
@@ -27,17 +26,12 @@ ExecStartPre=+/usr/bin/install -d -o buildkit-%i -g buildkit-%i -m 0700 /var/lib
 # Where its builds may connect, loaded before the daemon starts: if it fails,
 # so does this unit, and no build runs without it (#203).
 ExecStartPre=+/usr/sbin/nft -f /etc/github-runner/buildkit-%i.nft
-# RootlessKit maps the user's subordinate IDs (newuidmap) and gives the daemon
-# a network of its own, through slirp4netns: the internet, and DNS through
-# slirp's forwarder to the VM's resolver, but not the VM's loopback
-# (--disable-host-loopback), and the rules above for the rest of the network.
-# /etc is copied up so RootlessKit can point resolv.conf at that forwarder.
-# Nothing listens: the daemon answers on its Unix socket alone.
+# RootlessKit's user namespace and network: README.md, Rootless. Nothing
+# listens: the daemon answers on its Unix socket alone.
 ExecStart=/opt/rootlesskit/{{ github_runner_rootlesskit_version }}/rootlesskit --net=slirp4netns --slirp4netns-sandbox=auto --slirp4netns-seccomp=auto --disable-host-loopback --copy-up=/etc --port-driver=none /opt/buildkit/{{ github_runner_buildkit_version }}/bin/buildkitd --root /var/lib/github-runner-buildkit/%i/root --addr unix:///run/github-runner-buildkit/%i/buildkitd.sock
 ExecStopPost=+/usr/bin/rm -rf /var/lib/github-runner-buildkit/%i
 KillMode=mixed
 UMask=0077
 PrivateTmp=yes
 RemoveIPC=yes
-# Other users' processes are not visible to the daemon, nor to a build.
 ProtectProc=invisible

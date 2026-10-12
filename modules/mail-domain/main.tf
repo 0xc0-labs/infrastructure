@@ -31,8 +31,7 @@ resource "cloudflare_dns_record" "dkim_revoked" {
   comment = local.comment
 }
 
-# On subdomains of their own, never the apex: its MX and SPF are Email
-# Routing's, for the mail the domain receives.
+# Never the apex, whose MX and SPF are Email Routing's (README.md).
 resource "cloudflare_dns_record" "sending" {
   for_each = { for r in var.sending_records : "${r.type} ${r.name}" => r }
 
