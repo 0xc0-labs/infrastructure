@@ -9,6 +9,8 @@ terraform-docs = "0.24.0"
 # Ansible and ansible-lint are not here: uv installs them, with their Python
 # and every dependency, from uv.lock, hashes checked (scripts/python-env).
 uv       = "0.12.17"
+python   = "3.12.14"
+"pipx:semgrep" = "1.180.0"
 
 [tasks.docs]
 description = "Regenerate the inputs/outputs section of every module README"
