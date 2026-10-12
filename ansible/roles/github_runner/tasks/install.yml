@@ -41,9 +41,12 @@
 
 # newuidmap and newgidmap: RootlessKit maps a BuildKit user's subordinate IDs
 # with them. Each instance's BuildKit runs as a user of its own (configure).
+# slirp4netns gives it a network of its own, and nft the rules that keep that
+# network to the internet (#203). Debian leaves nftables.service disabled, so
+# its default ruleset never loads.
 - name: Install what rootless BuildKit needs
   ansible.builtin.apt:
-    name: uidmap
+    name: [uidmap, slirp4netns, nftables]
     state: present
 
 # Debian allows it already: this keeps it so.
