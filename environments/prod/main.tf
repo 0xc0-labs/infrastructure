@@ -83,36 +83,6 @@ module "email_destinations" {
   emails     = { for n in each.value : n => var.email_destinations[n] }
 }
 
-# 0xc0.cc's, from before the module was called per domain.
-moved {
-  from = module.email_routing
-  to   = module.email_routing["0xc0.cc"]
-}
-
-# The destinations, from when each zone made its own (#164). Both zones are in
-# this account.
-moved {
-  from = module.email_routing["0xc0.cc"].cloudflare_email_routing_address.main["sergio"]
-  to   = module.email_destinations["ca1599ae7852d5b4718cba351adad927"].cloudflare_email_routing_address.main["sergio"]
-}
-
-moved {
-  from = module.email_routing["offby1.cc"].cloudflare_email_routing_address.main["alex"]
-  to   = module.email_destinations["ca1599ae7852d5b4718cba351adad927"].cloudflare_email_routing_address.main["alex"]
-}
-
-# offby1.cc's own "sergio" was a second copy of the same mailbox: the refresh
-# now finds it as the live destination above, so destroying it would destroy
-# that one. Forgotten from the state, never destroyed. The two above are moved
-# first, so this forgets only that one.
-removed {
-  from = module.email_routing.cloudflare_email_routing_address.main
-
-  lifecycle {
-    destroy = false
-  }
-}
-
 module "mail_domains" {
   source   = "../../modules/mail-domain"
   for_each = var.mail_domains
@@ -123,24 +93,12 @@ module "mail_domains" {
   dmarc           = each.value.dmarc
 }
 
-# Made by hand in the dashboard before OpenTofu held them (#219).
-import {
-  to = module.mail_domains["0xc0.cc"].cloudflare_dns_record.dmarc
-  id = "068d993d1c3f23e994211457c96476f8/3de3338e19a17b79539142f7f216a179"
-}
-
-import {
-  to = module.mail_domains["0xc0.cc"].cloudflare_dns_record.dkim_revoked
-  id = "068d993d1c3f23e994211457c96476f8/9fefc80df6a55b8ccc1dd7c9f5c374cb"
-}
-
 output "email_forwards_pending" {
   description = "By domain, the forwards still waiting for their destination's confirmation: they get their rule on the first apply after it."
   value       = { for zone, m in module.email_routing : zone => m.pending }
 }
 
-# Public traffic enters platform, never mgmt. A name is public only once
-# external-dns (gitops) gives it a record.
+# Public traffic enters platform, never mgmt (docs/architecture.md, Web traffic).
 module "public_tunnel" {
   source = "../../modules/cloudflare-tunnel"
 
@@ -167,9 +125,7 @@ module "admin_tunnel" {
   routes     = [var.zones_cidr]
 }
 
-# The applications' files (workspace#88). A public bucket's zone caches what
-# its hostname serves, and has every response to it read as data a browser
-# never sniffs nor runs.
+# docs/architecture.md, The applications' files (workspace#88).
 locals {
   r2_public = { for name, b in var.r2_buckets : name => b.public if b.public != null }
 }
