@@ -1,12 +1,13 @@
 # Architecture
 
-How the pieces fit together. The **decisions** behind them —
-and what was discarded, and why — live in
-[`workspace/docs/design.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/design.md).
+How the pieces fit together. The **decisions** behind them live in the
+workspace's design, [`network`](https://github.com/0xc0-labs/workspace/blob/main/docs/design/network.md) and
+[`platform`](https://github.com/0xc0-labs/workspace/blob/main/docs/design/platform.md); what was discarded, and why, in
+[`discarded.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/discarded.md).
 The **network** is decided by the code, in
 [`terraform.tfvars`](../environments/prod/terraform.tfvars), and explained in
 [`zones.md`](zones.md). This document explains how it fits together; if it
-disagrees with the code or with `design.md`, they win.
+disagrees with the code or with the design, they win.
 
 ## The node
 
@@ -96,10 +97,12 @@ straight from Debian and Rocky Linux, as raw templates no VM ever clones.
 Packer bakes `debian-13-base` from the first, with the `base` role, and
 `debian-13-runner` from `debian-13-base`, with the `github_runner` role;
 `rocky-10-base` comes from the second, with the `base` role, for the RKE2
-nodes (`packer/build-order`). Every merge to `main` that touches `packer/` or
-those roles rebuilds every template in CI, after approval: each one deleted by
-name and built again. VMs are full clones and
-ignore later changes to their template; moving one onto a new build is
+nodes (`packer/build-order`). A merge to `main` that touches a template or
+its roles rebuilds it, and every template cloning it, in CI, after approval.
+Each is built beside the old one, as `<name>-next` at its VMID plus 50, and
+swapped in only once it succeeds, so a build that fails or is cut leaves the
+old template in place (`scripts/proxmox-template`, #207). VMs are full clones
+and ignore later changes to their template; moving one onto a new build is
 bumping its `rebuild` counter.
 
 ## Zones
@@ -300,7 +303,8 @@ does not count as tested.
 
 | Concern | Source of truth |
 |---|---|
-| Decisions, discarded options | [`workspace/docs/design.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/design.md) |
+| Decisions | the workspace's design: [`network`](https://github.com/0xc0-labs/workspace/blob/main/docs/design/network.md), [`platform`](https://github.com/0xc0-labs/workspace/blob/main/docs/design/platform.md) |
+| Discarded options | [`workspace/docs/discarded.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/discarded.md) |
 | Zones, VMs, transit matrix | [`environments/prod/terraform.tfvars`](../environments/prod/terraform.tfvars) |
 | Reserved ranges, addressing plan, invariants | [`docs/zones.md`](zones.md) |
 | How it fits together | this document |

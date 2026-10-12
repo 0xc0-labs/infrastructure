@@ -4,7 +4,7 @@ variable "name" {
 }
 
 variable "vm_id" {
-  description = "Fixed VMID of the template. Raw images take 9000-9099; Packer's templates, 9100-9199."
+  description = "Fixed VMID of the template. Raw images take 9000-9099; Packer's templates 9100-9149, and each one's next build that ID plus 50."
   type        = number
 
   validation {
