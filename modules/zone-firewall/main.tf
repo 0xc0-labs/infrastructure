@@ -19,7 +19,6 @@ locals {
   }
   groups = { for vnet, rules in local.rules : vnet => rules if length(rules) > 0 }
 
-  # From an admin zone only the node's admin ports survive.
   node_ports = [
     for e in var.transit : (
       contains(var.node_admin.admin_zones, e.from)
@@ -88,19 +87,17 @@ resource "proxmox_virtual_environment_cluster_firewall_security_group" "main" {
   dynamic "rule" {
     for_each = each.value
     content {
-      type   = "in"
-      action = "ACCEPT"
-      proto  = rule.value.proto
-      source = rule.value.source
-      # A protocol without ports (vrrp) takes none.
+      type    = "in"
+      action  = "ACCEPT"
+      proto   = rule.value.proto
+      source  = rule.value.source
       dport   = rule.value.dport == "" ? null : rule.value.dport
       comment = rule.value.comment
     }
   }
 }
 
-# Proxmox deletes a VM's firewall config with the VM: a recreated VM, whose
-# MAC is new, gets its options and rules recreated.
+# Recreated with the VM, keyed on its MAC (README.md).
 resource "terraform_data" "vm" {
   for_each = var.vms
   input    = each.value.mac

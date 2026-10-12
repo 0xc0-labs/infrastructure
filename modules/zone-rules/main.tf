@@ -4,10 +4,8 @@ data "cloudflare_zone" "main" {
   }
 }
 
-# A zone has one entry point ruleset per phase, and these are the whole of
-# each: a rule made anywhere else is removed on the next apply. "default" is
-# the dashboard's name for one, so a ruleset it made imports without being
-# replaced: the name forces a new one.
+# The whole of each phase (README.md). The dashboard names its rulesets
+# "default": with that name, one it made imports without being replaced.
 resource "cloudflare_ruleset" "cache_settings" {
   count = length(var.cache_rules) > 0 ? 1 : 0
 

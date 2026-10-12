@@ -1,9 +1,7 @@
 #!/usr/sbin/nft -f
 # {{ ansible_managed }}
-# Where instance {{ item }}'s builds may connect (#203). slirp4netns opens each
-# of their connections on the VM as buildkit-{{ item }}: the resolver, for DNS,
-# and the internet, never the VM nor the network. A table of its own, which
-# its BuildKit loads on every start, and no other rule of the VM's.
+# Where instance {{ item }}'s builds may connect (#203; README.md, Rootless).
+# slirp4netns opens each of their connections on the VM as buildkit-{{ item }}.
 table inet github_runner_buildkit_{{ item }}
 delete table inet github_runner_buildkit_{{ item }}
 

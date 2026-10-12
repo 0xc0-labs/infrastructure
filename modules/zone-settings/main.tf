@@ -4,8 +4,7 @@ data "cloudflare_zone" "main" {
   }
 }
 
-# Every zone has every setting already: creating this sets it, and removing it
-# leaves it as it is, not as Cloudflare's default.
+# Removing it leaves the zone's value as it is (README.md).
 resource "cloudflare_zone_setting" "main" {
   zone_id    = data.cloudflare_zone.main.zone_id
   setting_id = "min_tls_version"

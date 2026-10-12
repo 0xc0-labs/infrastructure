@@ -13,7 +13,6 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_route" "main" {
   comment    = "${var.name}: ${each.value}"
 }
 
-# Anything else gets a 404 from Cloudflare's edge.
 resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
   count = var.ingress == null ? 0 : 1
 

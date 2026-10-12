@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Runs packer against one template with the Proxmox credentials read from Vault
-# into the environment only, never onto disk. They are the ones OpenTofu uses.
+# into the environment only, never onto disk.
 # Usage: scripts/packer <template> <packer command>   e.g. scripts/packer debian-13-runner build
-# A build replaces the template only once it succeeds (scripts/proxmox-template).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -23,8 +22,7 @@ export PKR_VAR_proxmox_token="${PROXMOX_VE_API_TOKEN#*=}"
 
 [ "${1:-}" = build ] || exec packer "$@" "packer/$template"
 
-# A build never deletes the template first (#207): it builds the next one
-# beside it, and swaps it in only once Packer has finished it.
+# Built beside the template, and swapped in only once finished (#207).
 . scripts/proxmox-template
 template_ids "$template"
 template_clear_next

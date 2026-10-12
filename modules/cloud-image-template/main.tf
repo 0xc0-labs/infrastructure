@@ -6,9 +6,7 @@ resource "proxmox_download_file" "main" {
   checksum           = var.image_checksum
   checksum_algorithm = var.image_checksum_algorithm
 
-  # The URL is a dated build pinned by its checksum, so it never changes.
-  # Otherwise every refresh has the node HEAD the URL, and a dead mirror
-  # address stalls the plan for minutes.
+  # A pinned build never changes upstream (README.md).
   overwrite = false
 
   lifecycle {
