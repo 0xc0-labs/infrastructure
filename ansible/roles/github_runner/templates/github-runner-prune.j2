@@ -4,10 +4,8 @@
 # from. Runs as root before every start of runner instance $1, which is about
 # to start on version $2: its unit's, the same for every instance. A busy
 # instance may still run the version it started on until its job ends: its
-# listener's mounts say which. Also removes what this instance's copies of the
-# runner left before the read-only install (#202).
+# listener's mounts say which.
 set -euo pipefail
-instance="$1"
 declare -A keep=(["$2"]=1)
 while read -r unit; do
   pid=$(systemctl show -p MainPID --value "$unit")
@@ -25,4 +23,3 @@ for dir in /opt/actions-runner/*/; do
   [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
   [ -n "${keep[$version]:-}" ] || rm -rf -- "$dir"
 done
-rm -rf -- /opt/actions-runner/.dist-* "/opt/actions-runner/$instance" "/opt/actions-runner/$instance"-*

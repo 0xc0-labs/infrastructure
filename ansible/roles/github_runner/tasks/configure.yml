@@ -39,12 +39,6 @@
     group: root
     mode: "0700"
 
-# Vault holds the App's key (#190). After the JIT step, which does not read it.
-- name: Remove the App key
-  ansible.builtin.file:
-    path: /etc/github-runner/app.pem
-    state: absent
-
 # Why one per instance: README.md, One instance.
 - name: Create a user per runner instance
   ansible.builtin.user:
@@ -175,32 +169,3 @@
       {{ h.address }} {{ h.names | join(' ') }}
       {% endfor %}
     state: "{{ 'present' if github_runner_hosts | length > 0 else 'absent' }}"
-
-# The idle runners start again now, each as its instance's user, so that only
-# a busy one may still run as the user both instances shared (#201).
-- name: Restart the idle runners onto their own users
-  ansible.builtin.meta: flush_handlers
-
-- name: Look for the user both instances shared before
-  ansible.builtin.getent:
-    database: passwd
-
-- name: Find what still runs as it
-  ansible.builtin.command:
-    cmd: pgrep -u runner
-  register: github_runner_shared_user_procs
-  changed_when: false
-  failed_when: github_runner_shared_user_procs.rc not in [0, 1]
-  check_mode: false
-  when: "'runner' in ansible_facts.getent_passwd"
-
-# Its home holds what earlier jobs cached. A busy runner keeps it until the
-# next run.
-- name: Remove it, with its home, once nothing runs as it
-  ansible.builtin.user:
-    name: runner
-    state: absent
-    remove: true
-  when:
-    - "'runner' in ansible_facts.getent_passwd"
-    - github_runner_shared_user_procs.rc == 1
