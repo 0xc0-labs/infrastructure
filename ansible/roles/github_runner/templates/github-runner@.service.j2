@@ -12,32 +12,48 @@ Group=runner-%i
 # The group that opens this instance's BuildKit socket, and no other.
 SupplementaryGroups=buildkit-%i
 Environment=BUILDKIT_HOST=unix:///run/github-runner-buildkit/%i/buildkitd.sock
-WorkingDirectory=/opt/actions-runner/%i
-# "+" runs these as root: the copies of older versions pruned, an empty work
-# folder and home, an empty BuildKit, then a fresh just-in-time config fetched
-# through Vault with the AppRole secret ID, which the runner user cannot read.
+# Past GitHub's 30 days the listener exits 7, not 1, and stays down
+# (RestartPreventExitStatus=) rather than asking GitHub for a config every
+# ten seconds (README.md, A new runner release).
+Environment=ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE=1
+# "+" runs these as root: the runner versions nothing runs from removed, a
+# fresh state directory and an empty home, an empty BuildKit, then a fresh
+# just-in-time config fetched through Vault with the AppRole secret ID, which
+# the runner user cannot read.
 # A BuildKit that does not start fails the job that builds an image, not the
 # runner: the jobs that would fix it run here too.
-ExecStartPre=+/usr/local/libexec/github-runner-prune %i
+ExecStartPre=+/usr/local/libexec/github-runner-prune %i {{ github_runner_version }}
 ExecStartPre=+/usr/local/libexec/github-runner-reset %i
 ExecStartPre=-+/usr/bin/systemctl restart github-runner-buildkit@%i.service
 ExecStartPre=+/usr/local/libexec/github-runner-jit %i
-# From the copy's real path, not the link: the runner builds its paths from
-# where it starts, and a link that moves under a running job must not move them.
-ExecStart=/bin/bash -c 'cd "$(readlink -f /opt/actions-runner/%i)" && config=$(cat /run/github-runner/%i/jit); rm -f /run/github-runner/%i/jit; exec ./run.sh --jitconfig "$config"'
+# The config reaches the listener as a credential, never on a command line.
+# systemd loads credentials again for every ExecStartPre=, so the ones before
+# the JIT step find no file: without the fallback, that is fatal.
+LoadCredential=jit:/run/github-runner/%i/jit
+SetCredential=jit:none
+# The runner takes the parent of its bin/ as its root, where it writes: the
+# state directory, with the install mounted inside it, read only. A link
+# would resolve to the install itself.
+BindReadOnlyPaths=/opt/actions-runner/{{ github_runner_version }}/bin:/var/lib/github-runner/%i/bin
+BindReadOnlyPaths=/opt/actions-runner/{{ github_runner_version }}/externals:/var/lib/github-runner/%i/externals
+ExecStart=/usr/local/libexec/github-runner-listen %i
 # When the job ends, nothing it built or cached stays behind: its BuildKit
-# stops and empties, and so do its work folder and home.
+# stops and empties, and so do its state directory and home.
 ExecStopPost=-+/usr/bin/systemctl stop github-runner-buildkit@%i.service
 ExecStopPost=+/usr/local/libexec/github-runner-reset %i
 # One job, then the runner exits and deregisters: start the next one.
 Restart=always
 RestartSec=10s
+RestartPreventExitStatus=7
 NoNewPrivileges=yes
 PrivateTmp=yes
 # Its /dev/shm and IPC objects go when it stops.
 RemoveIPC=yes
 # Other users' processes, and their command lines, are not visible to the job.
 ProtectProc=invisible
+# The job writes its state, its home and to its BuildKit's socket, nothing else.
+ProtectSystem=strict
+ReadWritePaths=/var/lib/github-runner/%i /home/runner-%i -/run/github-runner-buildkit/%i
 
 [Install]
 WantedBy=multi-user.target

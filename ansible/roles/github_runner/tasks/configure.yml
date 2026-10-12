@@ -91,88 +91,25 @@
     group: root
     mode: "0700"
   loop: [github-runner-busy, github-runner-prune, github-runner-reset, github-runner-restart-idle]
-  register: github_runner_helpers
 
-# A job running from one copy keeps it while the next version unpacks beside it.
-# Only a missing copy is created: an existing one keeps its owner here, and
-# goes to the instance's user on its runner's next start (github-runner-reset),
-# so a busy job never loses its own directory.
-- name: Create a directory per runner and version
-  ansible.builtin.command:
-    cmd: "install -d -o runner-{{ item }} -g runner-{{ item }} -m 0750 /opt/actions-runner/{{ item }}-{{ github_runner_version }}"
-    creates: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
-  loop: "{{ range(1, github_runner_count + 1) | list }}"
-  register: github_runner_copies
-
-# A runner that updated itself in place is left alone until the next bump. As
-# root, which reads a copy whatever its owner, and hands the new one to the
-# instance's user.
-- name: Unpack the runner
-  ansible.builtin.command:
-    cmd: >-
-      sh -c 'tar --no-same-owner -xzf /var/cache/actions-runner-{{ github_runner_version }}.tar.gz
-      && touch .version-{{ github_runner_version }}
-      && chown -R runner-{{ item }}:runner-{{ item }} .'
-    chdir: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
-    creates: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}/.version-{{ github_runner_version }}"
-  loop: "{{ range(1, github_runner_count + 1) | list }}"
-  when: not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed))
-
-# A plain directory from before the versioned copies: renamed, the next start
-# of that instance prunes it.
-- name: Look for a runner directory from before the versioned copies
-  ansible.builtin.stat:
-    path: "/opt/actions-runner/{{ item }}"
-  loop: "{{ range(1, github_runner_count + 1) | list }}"
-  register: github_runner_legacy
-
-# Moved under a running job, its paths would break: a busy one moves on the
-# next run.
-- name: Find the busy runners
-  ansible.builtin.command:
-    cmd: "/usr/local/libexec/github-runner-busy {{ item }}"
-  loop: "{{ range(1, github_runner_count + 1) | list }}"
-  register: github_runner_probe
-  changed_when: false
-  failed_when: github_runner_probe.rc not in [0, 1]
-  check_mode: false
-  when: not (ansible_check_mode and github_runner_helpers.changed)
-
-- name: Note the legacy directories held by a busy runner
-  ansible.builtin.set_fact:
-    github_runner_held: >-
-      {{ github_runner_legacy.results
-         | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | rejectattr('stat.islnk')
-         | map(attribute='item')
-         | select('in', github_runner_probe.results | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0) | map(attribute='item') | list)
-         | list }}
-
-- name: Move it aside
-  ansible.builtin.command:
-    cmd: "mv /opt/actions-runner/{{ item.item }} /opt/actions-runner/{{ item.item }}-legacy"
-    creates: "/opt/actions-runner/{{ item.item }}-legacy"
-  loop: "{{ github_runner_legacy.results }}"
-  loop_control:
-    label: "{{ item.item }}"
-  when: item.stat.isdir | default(false) and not item.stat.islnk and item.item not in github_runner_held
-
-# The link is root's, like its directory, and only the link: with follow, the
-# module would give its owner to the copy the link points to, the one a busy
-# runner is running from, and lock that runner out of it (#204).
-- name: Point each runner at its copy
-  ansible.builtin.file:
-    path: "/opt/actions-runner/{{ item }}"
-    src: "/opt/actions-runner/{{ item }}-{{ github_runner_version }}"
-    state: link
+# The one helper the instance's user runs: it starts the listener.
+- name: Install the listener's start
+  ansible.builtin.template:
+    src: github-runner-listen.j2
+    dest: /usr/local/libexec/github-runner-listen
     owner: root
     group: root
-    follow: false
-    force: true
-  loop: "{{ range(1, github_runner_count + 1) | list }}"
-  when:
-    - item not in github_runner_held
-    - not (ansible_check_mode and (github_runner_tarball.changed or github_runner_copies.changed))
-  notify: Restart idle runners
+    mode: "0755"
+
+# Each instance's state directory goes under it, recreated on every start
+# (github-runner-reset).
+- name: Create the runners' state directory
+  ansible.builtin.file:
+    path: /var/lib/github-runner
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 
 # Started and stopped by its runner, around every job: never enabled itself.
 - name: Install the BuildKit unit

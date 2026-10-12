@@ -1,13 +1,28 @@
 #!/usr/bin/env bash
 # {{ ansible_managed }}
-# Removes every copy of runner instance $1 other than the one it is about to
-# start from. Runs as root before every start, when the instance runs nothing,
-# so a copy an older version left behind is no longer in use.
+# Removes every runner version in /opt/actions-runner that no instance runs
+# from. Runs as root before every start of runner instance $1, which is about
+# to start on version $2: its unit's, the same for every instance. A busy
+# instance may still run the version it started on until its job ends: its
+# listener's mounts say which. Also removes what this instance's copies of the
+# runner left before the read-only install (#202).
 set -euo pipefail
 instance="$1"
-current=$(readlink -f "/opt/actions-runner/$instance")
-for dir in /opt/actions-runner/"$instance"-*; do
-  [ -d "$dir" ] || continue
-  [ "$(readlink -f "$dir")" = "$current" ] && continue
-  rm -rf -- "$dir"
+declare -A keep=(["$2"]=1)
+while read -r unit; do
+  pid=$(systemctl show -p MainPID --value "$unit")
+  [ "$pid" -gt 0 ] || continue
+  n="${unit#github-runner@}"
+  n="${n%.service}"
+  bin=$(findmnt -N "$pid" -n -o FSROOT -M "/var/lib/github-runner/$n/bin" || true)
+  bin="${bin%/bin}"
+  [ -z "$bin" ] || keep["${bin##*/}"]=1
+done < <(systemctl list-units --plain --no-legend --state=active,reloading,activating,deactivating \
+  'github-runner@*.service' | awk '{print $1}')
+
+for dir in /opt/actions-runner/*/; do
+  version=$(basename "$dir")
+  [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+  [ -n "${keep[$version]:-}" ] || rm -rf -- "$dir"
 done
+rm -rf -- /opt/actions-runner/.dist-* "/opt/actions-runner/$instance" "/opt/actions-runner/$instance"-*
