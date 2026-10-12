@@ -47,6 +47,27 @@ url = "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_linux_amd64.zi
 checksum = "sha256:c45cb1f851971e8a340c4a36434273cf2c8ef0cc7f5b3ac65588a3539b1df424"
 url = "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_darwin_arm64.zip"
 
+[[tools."pipx:semgrep"]]
+version = "1.180.0"
+backend = "pipx:semgrep"
+specifiers = ["1.180.0"]
+uv = { path = ".mise/locks/pipx-semgrep/1.180.0", digest = "sha256:48d9a745154203f9399e7800d9b5a2b84678d8e9b2a73cbea49924fc1fe4da88" }
+
+[[tools.python]]
+version = "3.12.14"
+backend = "core:python"
+specifiers = ["3.12.14"]
+
+[tools.python."platforms.linux-x64"]
+checksum = "sha256:ef605200f8174e87ecfc308e52a88127543f85dd5c940dc5e92cab244b98a003"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.12.14+20260929-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+provenance = "github-attestations"
+
+[tools.python."platforms.macos-arm64"]
+checksum = "sha256:1bb3e53d231ee2c8881e8daf6426f4dd95bff0dda496af0f3af300357aa998d0"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.12.14+20260929-aarch64-apple-darwin-install_only_stripped.tar.gz"
+provenance = "github-attestations"
+
 [[tools.terraform-docs]]
 version = "0.24.0"
 backend = "aqua:terraform-docs/terraform-docs"
