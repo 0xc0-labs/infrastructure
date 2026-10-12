@@ -101,8 +101,6 @@
     group: root
     mode: "0755"
 
-# Each instance's state directory goes under it, recreated on every start
-# (github-runner-reset).
 - name: Create the runners' state directory
   ansible.builtin.file:
     path: /var/lib/github-runner
@@ -110,6 +108,29 @@
     owner: root
     group: root
     mode: "0755"
+
+# The unit's StateDirectory= creates it too; github-runner-reset empties it
+# before every start.
+- name: Create each instance's state directory
+  ansible.builtin.file:
+    path: "/var/lib/github-runner/{{ item }}"
+    state: directory
+    owner: "runner-{{ item }}"
+    group: "runner-{{ item }}"
+    mode: "0700"
+  loop: "{{ range(1, github_runner_count + 1) | list }}"
+
+# Where the unit mounts the install's bin/ and externals/, read only.
+- name: Create the install's mount points in each state directory
+  ansible.builtin.file:
+    path: "/var/lib/github-runner/{{ item.0 }}/{{ item.1 }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ range(1, github_runner_count + 1) | product(['bin', 'externals']) | list }}"
+  loop_control:
+    label: "{{ item.0 }}/{{ item.1 }}"
 
 # Started and stopped by its runner, around every job: never enabled itself.
 - name: Install the BuildKit unit

@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # {{ ansible_managed }}
-# Leaves runner instance $1 with nothing from an earlier job: a fresh state
+# Leaves runner instance $1 with nothing from an earlier job: an empty state
 # directory, an empty home and no config of the last runner's. Runs as root
 # before every start and after every stop, so what a job wrote outlives it no
 # longer than its runner's exit.
 #
-# The state directory is the runner's root: what it writes, and the job's work
-# folder. bin/ and externals/ inside it are root's, where the unit mounts the
-# install, read only.
+# It runs inside the unit's mounts: "+" lifts the sandbox, but systemd still
+# applies BindReadOnlyPaths= and ReadWritePaths= (#227). The state directory
+# and the home are mount points here, and bin/ and externals/ inside the first
+# are the install, read only. So both are emptied, never removed, and those
+# two are never entered.
 set -euo pipefail
 instance="$1"
 user="runner-$instance"
 state="/var/lib/github-runner/$instance"
-rm -rf -- "$state" "/home/$user" "/run/github-runner/$instance/jit"
-install -d -o "$user" -g "$user" -m 0700 "$state" "/home/$user"
-install -d -o root -g root -m 0755 "$state/bin" "$state/externals"
+home="/home/$user"
+install -d -o "$user" -g "$user" -m 0700 "$state" "$home"
+find "$state" -mindepth 1 -maxdepth 1 ! -name bin ! -name externals -exec rm -rf -- {} +
+find "$home" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+for mount in bin externals; do
+  [ -d "$state/$mount" ] || install -d -o root -g root -m 0755 "$state/$mount"
+done
+rm -f -- "/run/github-runner/$instance/jit"

@@ -16,8 +16,8 @@ Environment=BUILDKIT_HOST=unix:///run/github-runner-buildkit/%i/buildkitd.sock
 # (RestartPreventExitStatus=) rather than asking GitHub for a config every
 # ten seconds (README.md, A new runner release).
 Environment=ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE=1
-# "+" runs these as root: the runner versions nothing runs from removed, a
-# fresh state directory and an empty home, an empty BuildKit, then a fresh
+# "+" runs these as root: the runner versions nothing runs from removed, an
+# empty state directory and home, an empty BuildKit, then a fresh
 # just-in-time config fetched through Vault with the AppRole secret ID, which
 # the runner user cannot read.
 # A BuildKit that does not start fails the job that builds an image, not the
@@ -52,8 +52,13 @@ RemoveIPC=yes
 # Other users' processes, and their command lines, are not visible to the job.
 ProtectProc=invisible
 # The job writes its state, its home and to its BuildKit's socket, nothing else.
+# Every command of the unit, the "+" ones included, gets these mounts, so
+# none may need a path one of them creates: systemd creates the state
+# directory before any of them, and the rest may be missing (#227).
 ProtectSystem=strict
-ReadWritePaths=/var/lib/github-runner/%i /home/runner-%i -/run/github-runner-buildkit/%i
+StateDirectory=github-runner/%i
+StateDirectoryMode=0700
+ReadWritePaths=-/home/runner-%i -/run/github-runner-buildkit/%i
 
 [Install]
 WantedBy=multi-user.target

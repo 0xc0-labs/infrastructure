@@ -20,8 +20,8 @@ Each VM runs `github_runner_count` instances, two. Instance `<n>` is:
 | BuildKit's state: snapshots, cache, temporary files | `/var/lib/github-runner-buildkit/<n>` |
 
 Before its runner starts, as root: the runner versions no instance runs from
-removed (`github-runner-prune`), the state directory and the home recreated
-empty (`github-runner-reset`), BuildKit restarted empty, and a just-in-time
+removed (`github-runner-prune`), the state directory and the home emptied
+(`github-runner-reset`), BuildKit restarted empty, and a just-in-time
 config fetched through Vault (`github-runner-jit`). When the job ends and the
 runner exits: BuildKit stopped and its state removed, the state directory and
 the home emptied again. `/tmp` and `/var/tmp` are the unit's own, and its
@@ -37,7 +37,7 @@ Nor does anything a job writes reach the runner that takes the next job:
 - The rest of the file system is read only to the job too
   (`ProtectSystem=strict`), but for the state directory, the home and its
   BuildKit's socket: what it writes is under the first two, which the next
-  start recreates.
+  start empties.
 - The just-in-time config is on no command line. Only root can read the file
   `github-runner-jit` leaves; systemd hands it to the runner as a credential
   (`LoadCredential=`), and `github-runner-listen` passes it in the
