@@ -187,6 +187,12 @@ public_domains = ["0xc0.cc", "offby1.cc", "artistlabco.com"]
 # The WARP-only path's names (operator decision, 2026-09-30).
 internal_domains = ["int.0xc0.cc"]
 
+# Behind Cloudflare Access, with viewers managed in the dashboard
+# (modules/access-app/README.md).
+access_apps = {
+  artistlabco-com-staging = { name = "artistlabco.com staging", domain = "staging.artistlabco.com" }
+}
+
 # docs/architecture.md, The applications' files (workspace#88).
 r2_buckets = {
   payload-media = {

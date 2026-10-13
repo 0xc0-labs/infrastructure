@@ -48,4 +48,15 @@ Vault at `apps/payload/resources-storage` and
 `apps/payload-staging/resources-storage`, with the keys `bucket`, `endpoint`,
 `access_key_id` and `secret_access_key` (generic block: `vault`'s README).
 
+## Hostnames behind Access
+
+`access_apps` puts a hostname behind Cloudflare Access, today
+`staging.artistlabco.com`. Each gets a group of viewers, `<name> viewers`, and
+logs in by a one-time PIN sent to the visitor's email, for 24 hours. The
+operator, `warp_allowed_emails` from Vault, always gets in.
+
+To add or remove a viewer, in Cloudflare: Zero Trust → Access → Access groups
+→ the group → edit its emails. No apply is needed: OpenTofu ignores the group's
+members and owns everything else (`modules/access-app/README.md`).
+
 The Traefik, RustFS and PBS running on the node are **not** managed here.
