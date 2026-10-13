@@ -52,3 +52,14 @@ resource "cloudflare_dns_record" "dmarc" {
   ttl     = local.ttl
   comment = local.comment
 }
+
+resource "cloudflare_dns_record" "report_authorization" {
+  for_each = toset(var.report_domains)
+
+  zone_id = data.cloudflare_zone.main.zone_id
+  name    = "${each.key}._report._dmarc.${var.zone_name}"
+  type    = "TXT"
+  content = "v=DMARC1"
+  ttl     = local.ttl
+  comment = local.comment
+}

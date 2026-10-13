@@ -10,6 +10,7 @@ found by name.
 | No other DKIM key | `*._domainkey.<domain>` (TXT) | `v=DKIM1; p=`: a selector without a record of its own has a null key |
 | Sending | `<name>.<domain>` (CNAME or TXT, never proxied) | each record the provider's DNS page asks for, as data (`sending_records`) |
 | DMARC | `_dmarc.<domain>` (TXT) | `v=DMARC1; p=…; sp=…; adkim=…; aspf=…; rua=mailto:…` |
+| Report authorization | `<other>._report._dmarc.<domain>` (TXT) | `v=DMARC1`, for each domain in `report_domains` whose `rua` is an address here |
 
 For Resend, the sending records are two CNAMEs to its own infrastructure:
 `send`, its return path, whose target carries Resend's MX and SPF, and
@@ -64,6 +65,7 @@ No modules.
 | [cloudflare_dns_record.dkim](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/dns_record) | resource |
 | [cloudflare_dns_record.dkim_revoked](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/dns_record) | resource |
 | [cloudflare_dns_record.dmarc](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/dns_record) | resource |
+| [cloudflare_dns_record.report_authorization](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/dns_record) | resource |
 | [cloudflare_dns_record.sending](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/dns_record) | resource |
 | [cloudflare_zone.main](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/data-sources/zone) | data source |
 
@@ -73,6 +75,7 @@ No modules.
 | ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_dkim"></a> [dkim](#input\_dkim) | The sending provider's DKIM key: its selector (resend for Resend) and the TXT value it shows for it, p=<public key>. | <pre>object({<br/>    selector = string<br/>    value    = string<br/>  })</pre> | n/a | yes |
 | <a name="input_dmarc"></a> [dmarc](#input\_dmarc) | The domain's DMARC policy: p and sp, for the domain and its subdomains (none, quarantine or reject); adkim and aspf, the alignment (r relaxed, s strict); and rua, the address aggregate reports go to. | <pre>object({<br/>    p     = string<br/>    sp    = string<br/>    adkim = string<br/>    aspf  = string<br/>    rua   = string<br/>  })</pre> | n/a | yes |
+| <a name="input_report_domains"></a> [report\_domains](#input\_report\_domains) | Domains whose DMARC reports (rua) come to an address on this one: each gets the record that authorizes it to, as external reporting requires (RFC 7489, 7.1). | `list(string)` | `[]` | no |
 | <a name="input_sending_records"></a> [sending\_records](#input\_sending\_records) | The records the provider's DNS page asks for to send, besides DKIM, as it shows them: name relative to zone\_name (send for send.0xc0.cc), type and content. Never proxied. | <pre>list(object({<br/>    name    = string<br/>    type    = string<br/>    content = string<br/>  }))</pre> | n/a | yes |
 | <a name="input_zone_name"></a> [zone\_name](#input\_zone\_name) | Domain the mail is sent as, a zone in Cloudflare, e.g. 0xc0.cc. | `string` | n/a | yes |
 
