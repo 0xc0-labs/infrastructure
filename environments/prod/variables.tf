@@ -365,6 +365,7 @@ variable "mail_domains" {
       aspf  = string
       rua   = string
     })
+    report_domains = optional(list(string), [])
   }))
   default = {}
 }

@@ -68,3 +68,9 @@ variable "dmarc" {
     error_message = "dmarc.rua is one address, without mailto:."
   }
 }
+
+variable "report_domains" {
+  description = "Domains whose DMARC reports (rua) come to an address on this one: each gets the record that authorizes it to, as external reporting requires (RFC 7489, 7.1)."
+  type        = list(string)
+  default     = []
+}

@@ -91,6 +91,7 @@ module "mail_domains" {
   dkim            = each.value.dkim
   sending_records = each.value.sending_records
   dmarc           = each.value.dmarc
+  report_domains  = each.value.report_domains
 }
 
 output "email_forwards_pending" {

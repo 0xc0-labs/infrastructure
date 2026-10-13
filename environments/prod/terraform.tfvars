@@ -223,5 +223,24 @@ mail_domains = {
       aspf  = "s"
       rua   = "dmarc@0xc0.cc"
     }
+    # artistlabco.com's reports come to this mailbox too (#240).
+    report_domains = ["artistlabco.com"]
+  }
+  "artistlabco.com" = {
+    dkim = {
+      selector = "resend"
+      value    = "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDNigNzM6RFFi4DObgBqvJOKB4MixEB0NDVQCTDFm8iRxJQE7xT5rGgI1paIIZDpCoAa5bniamzOxCG5A0bY7eVsrZ5iv9uxM/qfSWniTpyrOimJQcnGIphypWbh/TlhSUHFNagvgASjIxzkfJ4EqgkRa12CfzCpQDXgA4yndmyYQIDAQAB"
+    }
+    sending_records = [
+      { name = "rsend", type = "CNAME", content = "rsend-euw1.forge.rmta.net" },
+      { name = "send", type = "CNAME", content = "send.forge.rmta.net" },
+    ]
+    dmarc = {
+      p     = "reject"
+      sp    = "reject"
+      adkim = "s"
+      aspf  = "s"
+      rua   = "dmarc@0xc0.cc"
+    }
   }
 }
