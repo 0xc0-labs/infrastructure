@@ -38,4 +38,14 @@ the PR; `apply` runs after merge and waits for the operator's approval. The
 conventions are the org's, in
 [`0xc0-labs/.github`](https://github.com/0xc0-labs/.github#conventions).
 
+## Private buckets
+
+`payload-resources` and `payload-staging-resources` keep Payload's gated
+resources: no custom domain, no `r2.dev` URL, no CORS, since downloads go by
+signed URL from Payload. After the apply, the operator creates an R2 API token
+per bucket (object read and write, limited to that bucket) and writes it to
+Vault at `apps/payload/resources-storage` and
+`apps/payload-staging/resources-storage`, with the keys `bucket`, `endpoint`,
+`access_key_id` and `secret_access_key` (generic block: `vault`'s README).
+
 The Traefik, RustFS and PBS running on the node are **not** managed here.
