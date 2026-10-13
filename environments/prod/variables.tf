@@ -326,6 +326,15 @@ variable "internal_domains" {
   default     = []
 }
 
+variable "access_apps" {
+  description = "Hostnames behind Cloudflare Access, keyed by a short name. The viewers are managed in the dashboard (modules/access-app/README.md); the operator is warp_allowed_emails."
+  type = map(object({
+    name   = string
+    domain = string
+  }))
+  default = {}
+}
+
 variable "r2_buckets" {
   description = "R2 buckets for the applications' files, keyed by name, <namespace>-<purpose>: one per application and environment. A bucket with public is served read only at public.hostname, a name in public.zone_name, through Cloudflare's cache: edge_ttl seconds at the edge, browser_ttl in the browser. One without is reached only with a token."
   type = map(object({

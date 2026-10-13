@@ -28,6 +28,13 @@ resource "cloudflare_zero_trust_access_policy" "main" {
   include    = [for e in var.allowed_emails : { email = { email = e } }]
 }
 
+resource "cloudflare_zero_trust_access_identity_provider" "onetimepin" {
+  account_id = var.account_id
+  name       = "One-time PIN"
+  type       = "onetimepin"
+  config     = {}
+}
+
 resource "cloudflare_zero_trust_access_application" "main" {
   account_id = var.account_id
   type       = "warp"
