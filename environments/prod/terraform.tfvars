@@ -198,6 +198,9 @@ r2_buckets = {
     }
   }
   payload-staging-media = {}
+  # Gated resources (workspace#168): private, downloads go by signed URL.
+  payload-resources         = {}
+  payload-staging-resources = {}
 }
 
 # Mail sent as these domains, through Resend (workspace#92), as its DNS page
