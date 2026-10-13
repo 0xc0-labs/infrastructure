@@ -1,9 +1,17 @@
 # zone-settings
 
-The settings of one Cloudflare zone that OpenTofu decides. Today there is
-one, the minimum TLS version: Cloudflare's edge refuses an older handshake for
-every name the zone proxies. That is 1.2 by default, since 1.0 and 1.1 are
-deprecated (RFC 8996). It is available on every plan, Free included.
+The settings of one Cloudflare zone that OpenTofu decides. Today there are
+two, both available on every plan, Free included.
+
+- **The minimum TLS version**: Cloudflare's edge refuses an older handshake for
+  every name the zone proxies. That is 1.2 by default, since 1.0 and 1.1 are
+  deprecated (RFC 8996).
+- **Always Use HTTPS**: the edge answers a plain HTTP request with a redirect
+  to HTTPS. It has to happen there: public traffic never reaches Traefik,
+  whose port 80 only redirects. The edge accepts plain HTTP and forwards it
+  through the tunnel, which talks HTTPS to Traefik, so without it a name
+  answers `200` over HTTP. The apps' HSTS header protects a browser only after
+  its first HTTPS visit.
 
 A name the zone does not proxy (a DNS-only record) never reaches Cloudflare's
 edge, so the setting does not apply to it. An R2 custom domain has a minimum
@@ -21,7 +29,7 @@ The API token OpenTofu runs with needs, on each zone:
 | Permission (dashboard name) | API name | For |
 |---|---|---|
 | Zone: Read | Zone Read | finding the zone by name |
-| Zone Settings: Edit | Zone Settings Write | the minimum TLS version |
+| Zone Settings: Edit | Zone Settings Write | the minimum TLS version, Always Use HTTPS |
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -45,6 +53,7 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
+| [cloudflare_zone_setting.always_use_https](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zone_setting) | resource |
 | [cloudflare_zone_setting.main](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zone_setting) | resource |
 | [cloudflare_zone.main](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/data-sources/zone) | data source |
 
