@@ -89,7 +89,16 @@ argument_specs:
         type: list
         elements: str
         default: ["0xc0"]
-        description: Custom labels workflows target.
+        description: Custom labels every instance carries.
+      github_runner_build_label:
+        type: str
+        default: build
+        description: Label the build instances carry besides the others.
+      github_runner_build_instances:
+        type: list
+        elements: int
+        default: [1]
+        description: Instance numbers that also carry the build label, so a workflow targeting it gets at most one job per VM.
       github_runner_hosts:
         type: list
         elements: dict

@@ -19,6 +19,16 @@ Each VM runs `github_runner_count` instances, two. Instance `<n>` is:
 | BuildKit's socket, the job's `$BUILDKIT_HOST` | `/run/github-runner-buildkit/<n>/buildkitd.sock` |
 | BuildKit's state: snapshots, cache, temporary files | `/var/lib/github-runner-buildkit/<n>` |
 
+Every instance carries the labels `github_runner_labels` (`0xc0`); the
+instances in `github_runner_build_instances` (`[1]`) also carry
+`github_runner_build_label` (`build`). A workflow that targets `build` gets at
+most one job per VM, so two Next.js builds never share its 4 GB
+(infrastructure#235), while the other instance keeps taking light jobs. The
+labels are set when the runner registers, so a change reaches an instance at
+its next start. To check it, after the run: `gh api
+/orgs/0xc0-labs/actions/runners --jq '.runners[] | select(any(.labels[]; .name
+== "build")) | .name'` lists one runner per VM.
+
 Before its runner starts, as root: the runner versions no instance runs from
 removed (`github-runner-prune`), the state directory and the home emptied
 (`github-runner-reset`), BuildKit restarted empty, and a just-in-time

@@ -18,6 +18,10 @@ github_runner_buildkit_subid_start: 1000000000
 # Created by .github (modules/runner-group).
 github_runner_group: "0xc0"
 github_runner_labels: ["0xc0"]
+# The instances that also carry the build label: a workflow targeting it gets
+# at most one job per VM (infrastructure#235: two Next.js builds hung a VM).
+github_runner_build_label: build
+github_runner_build_instances: [1]
 
 github_runner_hosts: []
 
