@@ -68,8 +68,11 @@ gh_api GET "/orgs/$GITHUB_ORG/actions/runner-groups/$group_id/runners?per_page=1
   done
 
 body=$(jq -n --arg name "$(hostname)-$instance-$now" --argjson group "$group_id" \
-  --argjson labels "$GITHUB_RUNNER_LABELS" \
-  '{name: $name, runner_group_id: $group, labels: $labels, work_folder: "_work"}')
+  --argjson labels "$GITHUB_RUNNER_LABELS" --arg build_label "$GITHUB_RUNNER_BUILD_LABEL" \
+  --argjson build_instances "$GITHUB_RUNNER_BUILD_INSTANCES" --argjson instance "$instance" \
+  '{name: $name, runner_group_id: $group,
+    labels: ($labels + (if ($build_instances | index($instance)) != null then [$build_label] else [] end)),
+    work_folder: "_work"}')
 config=$(gh_api POST "/orgs/$GITHUB_ORG/actions/runners/generate-jitconfig" "$token" -d "$body" |
   jq -r .encoded_jit_config)
 
