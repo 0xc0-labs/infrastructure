@@ -63,6 +63,26 @@ A BuildKit that fails to start does not stop its runner: the job that builds an
 image fails, and every other job, the ones that would fix it included, still
 runs.
 
+## Memory
+
+The VMs have 4 GB of RAM and the node has none to spare, so two settings
+(`tasks/memory.yml`, only on the CI VMs: the role is not baked, and no other
+play runs it) keep a job's peak from killing it:
+
+- `vm.overcommit_memory = 1`
+  (`/etc/sysctl.d/61-github-runner-memory.conf`). oxc-parser's raw transfer,
+  which knip uses, maps a 6 GiB `ArrayBuffer` for each parse; it is virtual
+  memory it never fills, but the default heuristic refuses a single mapping
+  larger than RAM plus swap, and the job fails with `RangeError: Array buffer
+  allocation failed` (#250). GitHub's runners allow it.
+- A 4 GiB swapfile, `/swapfile`, enabled at boot through `/etc/fstab`, with
+  `vm.swappiness = 10`: the Next.js build peaks at about 2.5 GB (payload#93)
+  beside the system and BuildKit, and swap turns a peak that runs over into
+  slowness instead of a hung VM (#235). The 32 GB disk has the room.
+
+To check it, after the run: `swapon --show` lists `/swapfile` at 4G, and
+`sysctl vm.overcommit_memory vm.swappiness` prints 1 and 10.
+
 ## A run of the role, under running jobs
 
 The role runs from the runners it configures (`playbooks/vm-ci.yml`), so an

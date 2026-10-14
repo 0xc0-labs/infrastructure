@@ -13,6 +13,9 @@ argument_specs:
         deregisters and starts clean.
       - The App's key never reaches the VM. That step logs in to Vault with an
         AppRole secret ID and has Transit sign the App's JWT.
+      - The VM allows large virtual reservations (vm.overcommit_memory = 1)
+        and has a swapfile, so a build's peak slows it down instead of
+        hanging it (README.md, Memory).
       - Each instance's jobs run as an unprivileged user of its own,
         runner-<n>, which cannot read the secret ID, nor anything of the other
         instance's. Its state directory, with the work folder, and its home
@@ -61,6 +64,14 @@ argument_specs:
         type: int
         default: 2
         description: Runners on this VM, each taking one job at a time.
+      github_runner_swap_size_mb:
+        type: int
+        default: 4096
+        description: Size of the VM's swapfile, in MiB.
+      github_runner_swappiness:
+        type: int
+        default: 10
+        description: vm.swappiness, low so that swap catches a peak rather than being paged to all the time.
       github_runner_buildkit_version:
         type: str
         default: "0.34.0"

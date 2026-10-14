@@ -3,3 +3,6 @@
 
 - name: Configure the runners
   ansible.builtin.import_tasks: configure.yml
+
+- name: Configure the VM's memory
+  ansible.builtin.import_tasks: memory.yml
