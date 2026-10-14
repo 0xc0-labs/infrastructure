@@ -1,0 +1,45 @@
+# Why: README.md, Memory.
+
+- name: Allow large reservations that are mostly untouched
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/61-github-runner-memory.conf
+    content: |
+      # Managed by Ansible (github_runner): oxc-parser maps a 6 GiB ArrayBuffer it
+      # never fills, which the default heuristic refuses on a 4 GB VM
+      # (https://github.com/0xc0-labs/infrastructure/issues/250).
+      vm.overcommit_memory = 1
+      # Swap only catches a peak.
+      vm.swappiness = {{ github_runner_swappiness }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply the memory settings
+
+- name: Create the swapfile
+  ansible.builtin.command:
+    cmd: >-
+      sh -c 'fallocate -l {{ github_runner_swap_size_mb }}M /swapfile
+      && chmod 0600 /swapfile
+      && mkswap /swapfile'
+    creates: /swapfile
+
+- name: Mount the swapfile on boot
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^/swapfile\s'
+    line: /swapfile none swap sw 0 0
+
+- name: Read the active swap
+  ansible.builtin.command:
+    cmd: swapon --show=NAME --noheadings
+  register: github_runner_active_swap
+  changed_when: false
+  check_mode: false
+
+- name: Enable the swapfile
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  changed_when: true
+  when:
+    - "'/swapfile' not in github_runner_active_swap.stdout"
+    - not ansible_check_mode

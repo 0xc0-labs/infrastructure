@@ -5,6 +5,10 @@ github_runner_tarball_sha256: "af4b794c1bc41d73d40535e3fe092a39f9679cd8d965954c2
 
 github_runner_count: 2
 
+# README.md, Memory.
+github_runner_swap_size_mb: 4096
+github_runner_swappiness: 10
+
 # Each instance's own rootless BuildKit (README.md). BuildKit's own rootless
 # image pairs this release with this RootlessKit.
 github_runner_buildkit_version: "0.34.0"
