@@ -188,9 +188,14 @@ public_domains = ["0xc0.cc", "offby1.cc", "artistlabco.com"]
 internal_domains = ["int.0xc0.cc"]
 
 # Behind Cloudflare Access, with viewers managed in the dashboard
-# (modules/access-app/README.md).
+# (modules/access-app/README.md). Stripe's webhook skips the login: the front
+# checks its signature (artistlabco.com#40).
 access_apps = {
-  artistlabco-com-staging = { name = "artistlabco.com staging", domain = "staging.artistlabco.com" }
+  artistlabco-com-staging = {
+    name         = "artistlabco.com staging"
+    domain       = "staging.artistlabco.com"
+    bypass_paths = ["/api/stripe/webhook"]
+  }
 }
 
 # docs/architecture.md, The applications' files (workspace#88).

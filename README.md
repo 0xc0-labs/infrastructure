@@ -55,6 +55,12 @@ Vault at `apps/payload/resources-storage` and
 logs in by a one-time PIN sent to the visitor's email, for 24 hours. The
 operator, `warp_allowed_emails` from Vault, always gets in.
 
+`bypass_paths` lets a path, and what is under it, skip the login, for a caller
+that cannot log in: `staging.artistlabco.com/api/stripe/webhook`, Stripe's
+webhook. Anyone can reach a bypassed path, so it must authenticate its callers
+itself; this one is Stripe's signature, checked by Payload (artistlabco.com#40,
+payload#77).
+
 To add or remove a viewer, in Cloudflare: Zero Trust → Access → Access groups
 → the group → edit its emails. No apply is needed: OpenTofu ignores the group's
 members and owns everything else (`modules/access-app/README.md`).

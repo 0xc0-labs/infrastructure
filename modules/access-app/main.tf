@@ -31,3 +31,24 @@ resource "cloudflare_zero_trust_access_application" "main" {
   auto_redirect_to_identity = true
   policies                  = [{ id = cloudflare_zero_trust_access_policy.main.id, precedence = 1 }]
 }
+
+# Cloudflare matches the most specific path first, so each of these, and what
+# is under it, skips the login while the rest of the hostname keeps it.
+resource "cloudflare_zero_trust_access_policy" "bypass" {
+  for_each = toset(var.bypass_paths)
+
+  account_id = var.account_id
+  name       = "${var.name} bypass ${each.value}"
+  decision   = "bypass"
+  include    = [{ everyone = {} }]
+}
+
+resource "cloudflare_zero_trust_access_application" "bypass" {
+  for_each = toset(var.bypass_paths)
+
+  account_id = var.account_id
+  type       = "self_hosted"
+  name       = "${var.name} bypass ${each.value}"
+  domain     = "${var.domain}${each.value}"
+  policies   = [{ id = cloudflare_zero_trust_access_policy.bypass[each.value].id, precedence = 1 }]
+}
