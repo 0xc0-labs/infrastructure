@@ -83,6 +83,24 @@ play runs it) keep a job's peak from killing it:
 To check it, after the run: `swapon --show` lists `/swapfile` at 4G, and
 `sysctl vm.overcommit_memory vm.swappiness` prints 1 and 10.
 
+## Private names
+
+`github_runner_hosts` puts the network's private names, such as
+`vault.int.0xc0.cc`, in `/etc/hosts`: the CI VMs are not on WARP, so Gateway
+does not resolve them. The entry is written twice, to `/etc/hosts` and to
+`/etc/cloud/templates/hosts.debian.tmpl`. The VMs' user-data carries
+`manage_etc_hosts: true`, so at every boot cloud-init renders `/etc/hosts`
+from that template and drops anything written only there, and every runner
+failed in its `ExecStartPre` with `Could not resolve host` after a reset
+(#255). Turning `manage_etc_hosts` off in `/etc/cloud/cloud.cfg.d/` would not
+win: the user-data overrides it. The template route leaves the hostname lines
+cloud-init writes as they are, and the entry is in place before
+`network-online.target`, which the runners wait for. An empty list removes
+both blocks.
+
+To check it, after a reboot: `getent hosts vault.int.0xc0.cc` prints the
+platform's internal VIP.
+
 ## A run of the role, under running jobs
 
 The role runs from the runners it configures (`playbooks/vm-ci.yml`), so an
