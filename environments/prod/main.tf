@@ -63,6 +63,7 @@ module "access_apps" {
   account_id           = var.cloudflare_account_id
   name                 = each.value.name
   domain               = each.value.domain
+  bypass_paths         = each.value.bypass_paths
   operator_emails      = var.warp_allowed_emails
   identity_provider_id = module.zero_trust.onetimepin_identity_provider_id
 }

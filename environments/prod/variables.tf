@@ -329,8 +329,9 @@ variable "internal_domains" {
 variable "access_apps" {
   description = "Hostnames behind Cloudflare Access, keyed by a short name. The viewers are managed in the dashboard (modules/access-app/README.md); the operator is warp_allowed_emails."
   type = map(object({
-    name   = string
-    domain = string
+    name         = string
+    domain       = string
+    bypass_paths = optional(list(string), [])
   }))
   default = {}
 }

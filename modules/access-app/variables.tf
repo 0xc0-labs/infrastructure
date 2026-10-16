@@ -34,3 +34,14 @@ variable "session_duration" {
   type        = string
   default     = "24h"
 }
+
+variable "bypass_paths" {
+  description = "Paths on the hostname, and what is under them, reached without a login. Anyone can reach them: each must authenticate its callers itself."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for p in var.bypass_paths : startswith(p, "/")])
+    error_message = "bypass_paths: each path starts with a slash."
+  }
+}
