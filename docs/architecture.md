@@ -66,6 +66,13 @@ flowchart TB
   [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). On a
   reinstalled node, write that file, restart Docker and run
   `iptables -P FORWARD ACCEPT` **before** the first apply.
+- **`eno1`'s offloads**, also by hand: TCP and generic segmentation offload
+  are off, with `post-up /usr/sbin/ethtool -K eno1 tso off gso off` in the
+  `iface eno1 inet static` stanza of `/etc/network/interfaces`. The I219-LM
+  (`e1000e`) hangs its TX ring with TSO on: on 2026-10-16 it logged
+  `Detected Hardware Unit Hang` and the node was without network for 23
+  minutes ([`#254`](https://github.com/0xc0-labs/infrastructure/issues/254)).
+  GRO, the receive side, stays on. On a reinstalled node, add the line.
 - **Hetzner firewall**, in Robot, also by hand. It is stateless: a reply gets
   in only if an incoming rule matches it. TCP replies pass through the `ack`
   rule, UDP only for what is listed. Besides DNS and NTP (source ports 53 and
