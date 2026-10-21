@@ -196,6 +196,16 @@ access_apps = {
     domain       = "staging.artistlabco.com"
     bypass_paths = ["/api/stripe/webhook"]
   }
+  # Strapi's admin, public for editors who need no WARP: no bypass, since
+  # Stripe's webhook reaches the front, not Strapi (workspace#202).
+  artistlabco-com-cms = {
+    name   = "artistlabco.com cms"
+    domain = "cms.artistlabco.com"
+  }
+  artistlabco-com-staging-cms = {
+    name   = "artistlabco.com staging cms"
+    domain = "cms-staging.artistlabco.com"
+  }
 }
 
 # docs/architecture.md, The applications' files (workspace#88).
@@ -212,6 +222,18 @@ r2_buckets = {
   # Gated resources (workspace#168): private, downloads go by signed URL.
   payload-resources         = {}
   payload-staging-resources = {}
+  # artistlabco.com's Strapi (workspace#202).
+  artistlabco-com-media = {
+    public = {
+      hostname    = "media.artistlabco.com"
+      zone_name   = "artistlabco.com"
+      edge_ttl    = 604800 # 7 days
+      browser_ttl = 86400  # 1 day
+    }
+  }
+  artistlabco-com-staging-media     = {}
+  artistlabco-com-resources         = {}
+  artistlabco-com-staging-resources = {}
 }
 
 # Mail sent as these domains, through Resend (workspace#92), as its DNS page
