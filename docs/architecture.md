@@ -196,7 +196,8 @@ Each application reaches its own bucket with an R2 token scoped to it, kept in
 Vault, never in the state.
 
 A public bucket's files are served at a hostname of ours (`media.0xc0.cc` for
-`payload-media`) straight from R2, through Cloudflare's cache: neither the
+`payload-media`, `media.artistlabco.com` for `artistlabco-com-media`) straight
+from R2, through Cloudflare's cache: neither the
 tunnel nor the cluster is in the way, and the application need not be public.
 Every response there carries `X-Content-Type-Options: nosniff` and
 `Content-Security-Policy: default-src 'none'`, so a browser never runs what a

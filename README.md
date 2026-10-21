@@ -48,10 +48,16 @@ Vault at `apps/payload/resources-storage` and
 `apps/payload-staging/resources-storage`, with the keys `bucket`, `endpoint`,
 `access_key_id` and `secret_access_key` (generic block: `vault`'s README).
 
+`artistlabco-com-resources` and `artistlabco-com-staging-resources` are
+artistlabco.com's Strapi's, private the same way. Its token is not written
+to Vault by the operator: it is entered in Strapi's Integraciones
+(Almacenamiento), which writes it.
+
 ## Hostnames behind Access
 
 `access_apps` puts a hostname behind Cloudflare Access, today
-`staging.artistlabco.com`. Each gets a group of viewers, `<name> viewers`, and
+`staging.artistlabco.com` and the admin of artistlabco.com's Strapi,
+`cms.artistlabco.com` and `cms-staging.artistlabco.com`, with no bypass. Each gets a group of viewers, `<name> viewers`, and
 logs in by a one-time PIN sent to the visitor's email, for 24 hours. The
 operator, `warp_allowed_emails` from Vault, always gets in.
 
