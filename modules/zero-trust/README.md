@@ -40,6 +40,7 @@ No modules.
 | Name | Type |
 | ---- | ---- |
 | [cloudflare_zero_trust_access_application.main](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zero_trust_access_application) | resource |
+| [cloudflare_zero_trust_access_identity_provider.onetimepin](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zero_trust_access_identity_provider) | resource |
 | [cloudflare_zero_trust_access_policy.main](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zero_trust_access_policy) | resource |
 | [cloudflare_zero_trust_device_default_profile.main](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zero_trust_device_default_profile) | resource |
 | [cloudflare_zero_trust_gateway_policy.internal](https://registry.terraform.io/providers/cloudflare/cloudflare/5.25.0/docs/resources/zero_trust_gateway_policy) | resource |
@@ -62,5 +63,7 @@ No modules.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_onetimepin_identity_provider_id"></a> [onetimepin\_identity\_provider\_id](#output\_onetimepin\_identity\_provider\_id) | ID of the one-time PIN identity provider, the login the Access applications offer. |
 <!-- END_TF_DOCS -->
