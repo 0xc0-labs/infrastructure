@@ -210,18 +210,6 @@ access_apps = {
 
 # docs/architecture.md, The applications' files (workspace#88).
 r2_buckets = {
-  payload-media = {
-    public = {
-      hostname    = "media.0xc0.cc"
-      zone_name   = "0xc0.cc"
-      edge_ttl    = 604800 # 7 days
-      browser_ttl = 86400  # 1 day
-    }
-  }
-  payload-staging-media = {}
-  # Gated resources (workspace#168): private, downloads go by signed URL.
-  payload-resources         = {}
-  payload-staging-resources = {}
   # artistlabco.com's Strapi (workspace#202).
   artistlabco-com-media = {
     public = {
@@ -231,7 +219,8 @@ r2_buckets = {
       browser_ttl = 86400  # 1 day
     }
   }
-  artistlabco-com-staging-media     = {}
+  artistlabco-com-staging-media = {}
+  # Gated resources (workspace#168): private, downloads go by signed URL.
   artistlabco-com-resources         = {}
   artistlabco-com-staging-resources = {}
 }
