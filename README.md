@@ -40,16 +40,9 @@ conventions are the org's, in
 
 ## Private buckets
 
-`payload-resources` and `payload-staging-resources` keep Payload's gated
-resources: no custom domain, no `r2.dev` URL, no CORS, since downloads go by
-signed URL from Payload. After the apply, the operator creates an R2 API token
-per bucket (object read and write, limited to that bucket) and writes it to
-Vault at `apps/payload/resources-storage` and
-`apps/payload-staging/resources-storage`, with the keys `bucket`, `endpoint`,
-`access_key_id` and `secret_access_key` (generic block: `vault`'s README).
-
 `artistlabco-com-resources` and `artistlabco-com-staging-resources` are
-artistlabco.com's Strapi's, private the same way. Its token is not written
+artistlabco.com's Strapi's gated resources: private, with no custom domain, no
+`r2.dev` URL and no CORS, since downloads go by signed URL. Its token is not written
 to Vault by the operator: it is entered in Strapi's Integraciones
 (Almacenamiento), which writes it.
 
@@ -64,8 +57,9 @@ operator, `warp_allowed_emails` from Vault, always gets in.
 `bypass_paths` lets a path, and what is under it, skip the login, for a caller
 that cannot log in: `staging.artistlabco.com/api/stripe/webhook`, Stripe's
 webhook. Anyone can reach a bypassed path, so it must authenticate its callers
-itself; this one is Stripe's signature, checked by Payload (artistlabco.com#40,
-payload#77).
+itself; this one is Stripe's signature, checked by the front, in
+`0xc0-labs/artistlabco.com`'s `src/app/api/stripe/webhook/route.ts`
+(artistlabco.com#40).
 
 To add or remove a viewer, in Cloudflare: Zero Trust → Access → Access groups
 → the group → edit its emails. No apply is needed: OpenTofu ignores the group's

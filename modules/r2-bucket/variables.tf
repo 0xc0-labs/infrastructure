@@ -4,7 +4,7 @@ variable "account_id" {
 }
 
 variable "name" {
-  description = "Bucket name, <namespace>-<purpose> (payload-media): the application's namespace, then what it keeps there."
+  description = "Bucket name, <namespace>-<purpose> (artistlabco-com-media): the application's namespace, then what it keeps there."
   type        = string
 
   validation {

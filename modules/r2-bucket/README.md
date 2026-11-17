@@ -1,7 +1,7 @@
 # r2-bucket
 
 One Cloudflare R2 bucket, where an application keeps its files: one per
-application and environment, named `<namespace>-<purpose>` (`payload-media`).
+application and environment, named `<namespace>-<purpose>` (`artistlabco-com-media`).
 
 - **The bucket**, in western Europe (`location = "weur"`, a hint Cloudflare
   honours only when the bucket is first created). The default jurisdiction,
@@ -18,7 +18,7 @@ application and environment, named `<namespace>-<purpose>` (`payload-media`).
   and certificate itself. The zone's cache and header rules are not here:
   each phase has one ruleset per zone, in `zone-rules`.
   The name's TLS minimum is its own, and holds whatever its zone's
-  (`zone-settings`) is, but not straight away: `media.0xc0.cc` still
+  (`zone-settings`) is, but not straight away: a new name still
   accepted TLS 1.1 minutes after its apply, and refused it the next day
   (#215).
 
@@ -77,7 +77,7 @@ No modules.
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | Cloudflare account holding the bucket. | `string` | n/a | yes |
 | <a name="input_custom_domain"></a> [custom\_domain](#input\_custom\_domain) | The hostname of ours the bucket's files are served at, read only and through Cloudflare's cache, and its zone, in the bucket's account. null keeps the bucket private: only a token reaches its files. | <pre>object({<br/>    hostname  = string<br/>    zone_name = string<br/>  })</pre> | `null` | no |
 | <a name="input_location"></a> [location](#input\_location) | Where Cloudflare places the bucket, best effort, and only when it is first created: weur is western Europe. | `string` | `"weur"` | no |
-| <a name="input_name"></a> [name](#input\_name) | Bucket name, <namespace>-<purpose> (payload-media): the application's namespace, then what it keeps there. | `string` | n/a | yes |
+| <a name="input_name"></a> [name](#input\_name) | Bucket name, <namespace>-<purpose> (artistlabco-com-media): the application's namespace, then what it keeps there. | `string` | n/a | yes |
 
 ## Outputs
 

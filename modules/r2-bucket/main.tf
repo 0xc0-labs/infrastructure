@@ -7,7 +7,7 @@ resource "cloudflare_r2_bucket" "main" {
   lifecycle {
     # It holds the application's files. Only a literal is allowed: a
     # deliberate removal lifts it in that PR.
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
