@@ -34,3 +34,15 @@ argument_specs:
         default: stable
         choices: [stable, latest]
         description: Rancher's RPM repository channel.
+      rke2_agent_container_selinux:
+        type: bool
+        default: true
+        description:
+          - Whether containerd gives every container an SELinux label (the config's selinux).
+          - The host's SELinux stays Enforcing either way.
+          - gVisor's runsc refuses a labelled container, so a node that runs it sets this to false, and its other pods run unlabelled.
+      rke2_agent_gvisor:
+        type: bool
+        default: false
+        description:
+          - Install gVisor (runsc) and register it in containerd as the runtime runsc. Set back to false, the role removes it.

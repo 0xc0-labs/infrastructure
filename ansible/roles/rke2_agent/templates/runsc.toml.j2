@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# The kubelet and containerd use the systemd cgroup driver on these nodes, so
+# the container's cgroup path arrives as slice:prefix:name.
+[runsc_config]
+  systemd-cgroup = "true"

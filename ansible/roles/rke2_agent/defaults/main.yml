@@ -2,3 +2,5 @@
 rke2_agent_version: "1.36.4~rke2r1"
 rke2_agent_selinux_version: "0.23"
 rke2_agent_channel: stable
+rke2_agent_container_selinux: true
+rke2_agent_gvisor: false

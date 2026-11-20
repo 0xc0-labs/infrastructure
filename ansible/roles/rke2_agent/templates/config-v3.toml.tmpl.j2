@@ -1,0 +1,10 @@
+{# Containerd's own template engine reads the next line when RKE2 starts. #}
+{% raw %}{{ template "base" . }}{% endraw %}
+
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runsc]
+  runtime_type = 'io.containerd.runsc.v1'
+  runtime_path = '{{ rke2_agent_gvisor_bin_dir }}/containerd-shim-runsc-v1'
+
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runsc.options]
+  TypeUrl = 'io.containerd.runsc.v1.options'
+  ConfigPath = '{{ rke2_agent_gvisor_config }}'

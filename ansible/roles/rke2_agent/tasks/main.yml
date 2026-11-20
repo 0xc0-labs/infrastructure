@@ -14,6 +14,10 @@
     tasks_from: selinux
   tags: [rke2_agent, rke2_agent_selinux]
 
+- name: Install gVisor, or remove it
+  ansible.builtin.import_tasks: gvisor.yml
+  tags: [rke2_agent, rke2_agent_gvisor]
+
 - name: Configure RKE2
   ansible.builtin.import_tasks: configure.yml
   tags: [rke2_agent, rke2_agent_configure]
