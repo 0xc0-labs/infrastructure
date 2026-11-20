@@ -72,7 +72,11 @@ LB, so inside `platform` only the LBs reach 443 from the zone itself (#187).
 The firewall cannot tell the two VIPs apart: the tunnel's own ingress, which
 names only `10.10.4.10`, keeps the internet off the internal path.
 `vm-rke2-01` to `vm-rke2-03` are identical RKE2 servers — control plane, etcd
-and workloads together — and `vm-rke2-04` is an agent, workloads only.
+and workloads together — and `vm-rke2-04` is an agent, workloads only. It is
+also the gVisor test (2026-11-20, 0xc0-labs/workspace#266): it runs `runsc` as
+a second runtime and gives its containers no SELinux label, so every pod there
+runs unlabelled while the test lasts. The way back is in the README, gVisor on
+vm-rke2-04.
 `cluster` creates them all together (`modules/rke2-cluster`), so the load
 balancer is deployed with the cluster; each RKE2 node, servers and agents,
 carries two blank data disks besides its root one. HAProxy sends the API, the

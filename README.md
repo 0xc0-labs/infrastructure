@@ -38,6 +38,25 @@ the PR; `apply` runs after merge and waits for the operator's approval. The
 conventions are the org's, in
 [`0xc0-labs/.github`](https://github.com/0xc0-labs/.github#conventions).
 
+## gVisor on vm-rke2-04
+
+`vm-rke2-04` runs gVisor, as a test (2026-11-20, 0xc0-labs/workspace#266): the
+`rke2_agent` role installs `runsc` there and registers it in RKE2's containerd
+as the runtime `runsc`. `runsc` refuses a container that carries an SELinux
+label, and containerd has no switch per runtime, so the node's containers are
+given none (`selinux: false` in its RKE2 config). The host stays Enforcing and
+`rke2-selinux` stays installed; what changes is that **every pod on that node
+runs unlabelled**, the shared PostgreSQL, MariaDB, Vault's replica and
+OpenObserve among them. The RuntimeClass and the pods that use `runsc` are in
+`gitops`.
+
+The way back, in `ansible/inventory/hosts.yml`, on `vm-rke2-04`: delete
+`rke2_agent_container_selinux: false` and `rke2_agent_gvisor: true` (their
+defaults are `true` and `false`), merge, and let the pipeline run the cluster
+playbook. The role removes the template, the binaries and the file-context
+rules, and restarts `rke2-agent` once; the node's pods are labelled again as
+they restart.
+
 ## Private buckets
 
 `artistlabco-com-resources` and `artistlabco-com-staging-resources` are

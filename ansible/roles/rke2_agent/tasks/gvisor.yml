@@ -1,0 +1,135 @@
+- name: Install gVisor
+  when: rke2_agent_gvisor
+  block:
+    - name: Install what unpacking and labelling gVisor needs
+      ansible.builtin.dnf:
+        name: [zstd, tar, policycoreutils-python-utils]
+        state: present
+
+    - name: Download gVisor {{ rke2_agent_gvisor_release }}
+      ansible.builtin.get_url:
+        url: "{{ rke2_agent_gvisor_url }}"
+        dest: "/var/cache/gvisor-{{ rke2_agent_gvisor_release }}.tar.zstd"
+        checksum: "sha512:{{ rke2_agent_gvisor_sha512 }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: rke2_agent_gvisor_tarball
+
+    - name: Unpack gVisor {{ rke2_agent_gvisor_release }}
+      ansible.builtin.command:
+        cmd: >-
+          sh -c 'mkdir -p {{ rke2_agent_gvisor_stage_dir }}
+          && tar --no-same-owner --zstd -xf /var/cache/gvisor-{{ rke2_agent_gvisor_release }}.tar.zstd
+          -C {{ rke2_agent_gvisor_stage_dir }}
+          && touch {{ rke2_agent_gvisor_stage_dir }}/.unpacked'
+        creates: "{{ rke2_agent_gvisor_stage_dir }}/.unpacked"
+      when: not (ansible_check_mode and rke2_agent_gvisor_tarball.changed)
+
+    - name: Put the gVisor binaries in {{ rke2_agent_gvisor_bin_dir }}
+      ansible.builtin.copy:
+        src: "{{ rke2_agent_gvisor_stage_dir }}/{{ item }}"
+        dest: "{{ rke2_agent_gvisor_bin_dir }}/"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+        directory_mode: "0755"
+      loop: [runsc, containerd-shim-runsc-v1, gvisor-bin]
+      when: not (ansible_check_mode and rke2_agent_gvisor_tarball.changed)
+
+    # container-selinux has no rule for these names: without one containerd
+    # cannot execute them under Enforcing.
+    - name: Label the gVisor binaries as container runtimes
+      community.general.sefcontext:
+        target: "{{ item }}"
+        setype: container_runtime_exec_t
+        state: present
+      loop: "{{ rke2_agent_gvisor_fcontexts }}"
+
+    - name: Find what is mislabelled in gVisor's files
+      ansible.builtin.command:
+        cmd: >-
+          restorecon -R -n -v
+          {{ rke2_agent_gvisor_bin_dir }}/runsc
+          {{ rke2_agent_gvisor_bin_dir }}/containerd-shim-runsc-v1
+          {{ rke2_agent_gvisor_bin_dir }}/gvisor-bin
+      register: rke2_agent_gvisor_labels
+      changed_when: false
+      check_mode: false
+      failed_when: false
+
+    - name: Give gVisor's files the policy's labels
+      ansible.builtin.command:
+        cmd: >-
+          restorecon -R
+          {{ rke2_agent_gvisor_bin_dir }}/runsc
+          {{ rke2_agent_gvisor_bin_dir }}/containerd-shim-runsc-v1
+          {{ rke2_agent_gvisor_bin_dir }}/gvisor-bin
+      changed_when: true
+      when: rke2_agent_gvisor_labels.stdout | default('') | length > 0
+
+    - name: Make the directory of the shim's config
+      ansible.builtin.file:
+        path: "{{ rke2_agent_gvisor_config | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Write the shim's config
+      ansible.builtin.template:
+        src: runsc.toml.j2
+        dest: "{{ rke2_agent_gvisor_config }}"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart rke2-agent
+
+    - name: Make the directory of containerd's template
+      ansible.builtin.file:
+        path: "{{ rke2_agent_containerd_template | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Register the runsc runtime in containerd
+      ansible.builtin.template:
+        src: config-v3.toml.tmpl.j2
+        dest: "{{ rke2_agent_containerd_template }}"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart rke2-agent
+
+- name: Remove gVisor
+  when: not rke2_agent_gvisor
+  block:
+    - name: Remove containerd's template, the shim's config and the binaries
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ rke2_agent_containerd_template }}"
+        - "{{ rke2_agent_gvisor_config }}"
+        - "{{ rke2_agent_gvisor_bin_dir }}/runsc"
+        - "{{ rke2_agent_gvisor_bin_dir }}/containerd-shim-runsc-v1"
+        - "{{ rke2_agent_gvisor_bin_dir }}/gvisor-bin"
+        - /var/lib/gvisor
+        - "/var/cache/gvisor-{{ rke2_agent_gvisor_release }}.tar.zstd"
+      notify: Restart rke2-agent
+
+    # Only gVisor's install puts semanage here: without it no rule was added.
+    - name: Look for semanage
+      ansible.builtin.stat:
+        path: /usr/sbin/semanage
+      register: rke2_agent_gvisor_semanage
+
+    - name: Remove the gVisor file-context rules
+      community.general.sefcontext:
+        target: "{{ item }}"
+        setype: container_runtime_exec_t
+        state: absent
+      loop: "{{ rke2_agent_gvisor_fcontexts }}"
+      when: rke2_agent_gvisor_semanage.stat.exists
