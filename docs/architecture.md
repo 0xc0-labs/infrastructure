@@ -81,6 +81,22 @@ flowchart TB
   ([`#37`](https://github.com/0xc0-labs/infrastructure/issues/37)). IPv6
   is not filtered there.
 
+  Each server's firewall also carries two incoming rules for the private
+  ranges, above its `deny all`: `zones` (IPv4, any protocol, source
+  `10.10.0.0/16`) and `nodes-link` (IPv4, any protocol, source
+  `10.20.0.0/24`), both accept. The firewall filters the vSwitches too, and
+  without them only ICMP and TCP replies cross between the nodes: on
+  2026-11-23, with the rules above alone, none of 200 UDP packets arrived and
+  no TCP connection opened, in either direction. Each server uses 9 of the 10
+  incoming rules Hetzner allows.
+
+Some of these bullets hold only for `pve-1`, each for its own reason. The base
+services and Docker, because `pve-1` runs Docker, PBS, Traefik and RustFS: they
+do not apply to a node installed without them, as in the README's
+[Adding a node](../README.md#adding-a-node). Disks, because of its RAID level:
+`pve-1` is RAID 0, and `pve-2` is RAID 1. The offloads and Hetzner's firewall
+do apply to every node, and are set by hand there.
+
 ## Templates
 
 ```mermaid

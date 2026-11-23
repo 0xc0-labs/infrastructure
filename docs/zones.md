@@ -35,10 +35,28 @@ none of them touches.
 | Range | For |
 |---|---|
 | 10.11.0.0/16 | a second node (none exists) |
-| 10.20.0.0/16 | Hetzner Cloud and vSwitch (none exists) |
+| 10.20.0.0/16 | Hetzner Cloud and vSwitch; `10.20.0.0/24` is taken by the nodes' link ([vSwitches](#vswitches)), the rest is free |
 | 10.42.0.0/16 | RKE2 pods |
 | 10.43.0.0/16 | RKE2 services |
 | 10.66.66.0/24 | lab (none exists) |
+
+## vSwitches
+
+Hetzner vSwitches, in Robot since 2026-11-23, with both nodes attached
+(`pve-1` and `pve-2`; [Adding a node](../README.md#adding-a-node)). Hetzner
+admits VLANs 4000 to 4091, 5 vSwitches a server and an MTU of 1400 at most.
+
+| vSwitch | VLAN | Carries |
+|---|---|---|
+| `cluster` | 4000 | the nodes' link, `10.20.0.0/24`: `pve-1` `.1`, `pve-2` `.2` |
+| `mgmt` | 4001 | the `mgmt` zone, `10.10.0.0/24` |
+| `ci` | 4002 | the `ci` zone, `10.10.1.0/24` |
+| `platform` | 4003 | the `platform` zone, `10.10.4.0/24` |
+
+They are created and attached, and that is all: **the zones do not ride them
+yet**. Today every zone is still the SDN VNet described above, on `pve-1`
+alone. Hetzner's firewall filters the vSwitches too
+([`architecture.md`](architecture.md#the-node)).
 
 ## Machines
 
