@@ -62,9 +62,24 @@ key**, not a password, and reset the server. Sign in as `root`.
 > leave alone. On `pve-2` it did.
 
 A drive left out of the install keeps the partitions and RAID members of an
-earlier one, and the rescue system assembles those arrays by itself. Clear
-every drive that is not named below before installing, or its old arrays come
-back after the first reboot:
+earlier one, and the rescue system assembles those arrays by itself. On
+`pve-2`, the install that was not meant to run had put the members of the
+system's arrays (`md0`, `md1`, `md2`) on all four drives, so the two left out
+still carried them and the arrays came back after the first reboot.
+
+Clearing is only for a drive that carries leftover members of an earlier
+**system** install and nothing to keep. A drive that holds data is left
+alone: nothing in this runbook touches it. Tell them apart before running
+anything, in the rescue system:
+
+```
+cat /proc/mdstat
+lsblk -o NAME,SIZE,TYPE,FSTYPE
+```
+
+A leftover is a partition that is a member of the same arrays as the system
+drives' partitions. Only for those, and only for the arrays they belong to
+(not every array on the server):
 
 ```
 mdadm --stop /dev/md0 /dev/md1 /dev/md2

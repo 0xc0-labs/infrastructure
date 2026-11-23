@@ -90,11 +90,12 @@ flowchart TB
   no TCP connection opened, in either direction. Each server uses 9 of the 10
   incoming rules Hetzner allows.
 
-The bullets on the base services, the disks and Docker hold only for `pve-1`,
-because it runs Docker, PBS, Traefik and RustFS: they do not apply to a node
-installed without them, as in the README's
-[Adding a node](../README.md#adding-a-node). The offloads and Hetzner's
-firewall do apply to every node, and are set by hand there.
+Some of these bullets hold only for `pve-1`, each for its own reason. The base
+services and Docker, because `pve-1` runs Docker, PBS, Traefik and RustFS: they
+do not apply to a node installed without them, as in the README's
+[Adding a node](../README.md#adding-a-node). Disks, because of its RAID level:
+`pve-1` is RAID 0, and `pve-2` is RAID 1. The offloads and Hetzner's firewall
+do apply to every node, and are set by hand there.
 
 ## Templates
 
