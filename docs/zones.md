@@ -112,8 +112,11 @@ undone (#284). Two things broke, and each needs its own fix:
 ## Machines
 
 What exists is the `vms` map in `terraform.tfvars`, and `cluster` for the RKE2
-nodes and their load balancers. The addressing plan, so that no address is
-handed out twice:
+nodes and their load balancers. Each machine names the Proxmox node it runs on,
+its `node`, which must be one of `nodes` **(code)**; every one says `pve-1`
+today. A guest moves between nodes live, with its disks, over the link, and the
+`node` is changed only after the move ([`architecture.md`](architecture.md#the-node)).
+The addressing plan, so that no address is handed out twice:
 
 | VM | Zone | IP |
 |---|---|---|

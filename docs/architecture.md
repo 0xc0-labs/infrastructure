@@ -19,11 +19,24 @@ QDevice and no HA, `pve-1` with 2 votes and `pve-2` with 1, so `pve-1` keeps
 quorum alone. They talk over one corosync link on the vSwitch `cluster`
 (`10.20.0.1` and `10.20.0.2`, [`zones.md`](zones.md#vswitches)), and both are in
 `nodes`, each with its link interface and the same firewall rules from this
-root. `pve-1` is the first of them: it runs every VM, the templates and the
-backups, and it alone holds the zones' gateway and SNAT (`zone_gateways`).
-`pve-2` has no guest, and the zones' bridges on it are layer 2 only. PBS runs on `pve-1`'s host, so
-its `sbox` storage is reached over the link, on `10.20.0.1`. The rest of this section is
-`pve-1`.
+root. Every machine, VM and template names the node it runs on, its `node` in
+`terraform.tfvars`: today all of them say `pve-1`, which runs every VM, the
+templates and the backups, and it alone holds the zones' gateway and SNAT
+(`zone_gateways`). `pve-2` has no guest, and the zones' bridges on it are layer
+2 only. PBS runs on `pve-1`'s host, so its `sbox` storage is reached over the
+link, on `10.20.0.1`. The rest of this section is `pve-1`.
+
+**Moving a guest between nodes.** A guest moves live, with its disks, over the
+link: `qm migrate <id> <node> --online --with-local-disks`, run by hand on its
+node. The cluster's options set how: `secure`, over `node_link.cidr`, limited
+to `migration_bandwidth_limit_mib`, since the vSwitch is 1 Gbit and shared with
+every zone's traffic between the nodes. The code changes after the move, never
+before: a VM whose `node` changes is replaced, and every VM carries
+`prevent_destroy`, so a plan made before the move fails. After it, the `node`
+is changed and the plan shows nothing. `migrate` is not set on the VMs, so that
+no apply moves every one of them at once. A clone is made on the node of its
+template, since `local` is a `dir` storage and Proxmox clones to another node
+only from shared storage.
 
 ```mermaid
 flowchart TB
