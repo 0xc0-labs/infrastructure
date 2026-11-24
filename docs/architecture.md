@@ -14,6 +14,17 @@ disagrees with the code or with the design, they win.
 One Hetzner dedicated server, `pve-1` (`pve.0xc0.cc`): Proxmox VE 9, 12 CPU,
 62 GB RAM, two NVMe disks in mdadm RAID 0.
 
+It is one of two nodes of a Proxmox cluster named `cluster`, with `pve-2`: no
+QDevice and no HA, `pve-1` with 2 votes and `pve-2` with 1, so `pve-1` keeps
+quorum alone. They talk over one corosync link on the vSwitch `cluster`
+(`10.20.0.1` and `10.20.0.2`, [`zones.md`](zones.md#vswitches)), and both are in
+`nodes`, each with its link interface and the same firewall rules from this
+root. `pve-1` is the first of them: it runs every VM, the templates and the
+backups, and it alone holds the zones' gateway and SNAT (`sdn_nodes`) until the
+zones ride the vSwitches. `pve-2` has no guest. PBS runs on `pve-1`'s host, so
+its `sbox` storage is restricted to `pve-1`. The rest of this section is
+`pve-1`.
+
 ```mermaid
 flowchart TB
   internet(("Internet"))

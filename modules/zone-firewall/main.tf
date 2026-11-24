@@ -68,7 +68,9 @@ resource "proxmox_virtual_environment_firewall_ipset" "management" {
 }
 
 resource "proxmox_virtual_environment_firewall_rules" "node" {
-  node_name = var.node_name
+  for_each = toset(var.node_names)
+
+  node_name = each.key
 
   dynamic "rule" {
     for_each = local.node_rules
@@ -84,8 +86,12 @@ resource "proxmox_virtual_environment_firewall_rules" "node" {
 }
 
 # Turned on only once its rules exist: without them it cuts SSH over WARP.
+# Every node gets the same rules: a node's rules are its own, the datacenter's
+# configuration is shared.
 resource "proxmox_node_firewall" "main" {
-  node_name = var.node_name
+  for_each = toset(var.node_names)
+
+  node_name = each.key
   enabled   = var.node_enabled
 
   depends_on = [
@@ -122,10 +128,10 @@ resource "terraform_data" "vm" {
 resource "proxmox_virtual_environment_firewall_options" "main" {
   for_each = var.vms
 
-  node_name = var.node_name
+  node_name = var.node_names[0]
   vm_id     = each.value.vm_id
 
-  enabled       = true
+  enabled      = true
   input_policy  = "DROP"
   output_policy = contains(local.no_egress, each.value.vnet) ? "DROP" : "ACCEPT"
   macfilter     = true
@@ -138,7 +144,7 @@ resource "proxmox_virtual_environment_firewall_options" "main" {
 resource "proxmox_virtual_environment_firewall_rules" "main" {
   for_each = { for name, vm in var.vms : name => vm if contains(keys(local.groups), vm.vnet) }
 
-  node_name = var.node_name
+  node_name = var.node_names[0]
   vm_id     = each.value.vm_id
 
   rule {

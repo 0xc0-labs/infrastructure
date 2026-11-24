@@ -254,8 +254,24 @@ reboot does not stop a join.
 7. **See it:** `pvecm status` on both nodes gives `Expected votes: 3`,
    `Total votes: 3` and `Quorate: Yes`, and `ssh 10.20.0.2 hostname` from
    `pve-1` prints `pve-2`. **From this moment `pve-2`'s SSH on its public
-   address is closed**, until its node rules apply (the next change of the
-   cluster's rollout): it is reached over the link.
+   address is closed**, until its node rules apply (step 8): it is reached
+   over the link.
+
+8. **Approve the apply** of the PR that puts `pve-2` in `nodes` (#277). It
+   gives the joined node its firewall options and the same rules as `pve-1`.
+   On `pve-2`, reached from `pve-1` (`ssh 10.20.0.2`), start the firewall the
+   rehearsal left stopped, and check it:
+
+   ```
+   systemctl start pve-firewall
+   pve-firewall status
+   ```
+
+   Seen: `enabled/running`, `/etc/pve/nodes/pve-2/host.fw` holds the five
+   rules, and `pve-2`'s SSH answers again on its public address. Restrict the
+   PBS storage, which runs on `pve-1`'s host, to it (`storage.cfg` is the
+   cluster's now): `pvesm set sbox --nodes pve-1`. Seen: `pvesm status` on
+   `pve-2` no longer lists `sbox`.
 
 ## gVisor on vm-rke2-04
 

@@ -1,6 +1,16 @@
 variable "nodes" {
-  description = "Proxmox nodes in the cluster."
+  description = "Proxmox nodes in the cluster. The first runs the templates, the VMs, the RKE2 cluster, the backups and the VM firewalls."
   type        = list(string)
+}
+
+variable "sdn_nodes" {
+  description = "The nodes the SDN zone and its VNets live on, a subset of `nodes`: only pve-1 holds the zones' gateway and SNAT until the zones ride the vSwitches."
+  type        = list(string)
+
+  validation {
+    condition     = alltrue([for n in var.sdn_nodes : contains(var.nodes, n)])
+    error_message = "Every sdn_nodes entry must be in `nodes`."
+  }
 }
 
 variable "node_link" {

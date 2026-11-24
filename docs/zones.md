@@ -57,10 +57,11 @@ They are created and attached. `cluster` is the only one in use: each node
 holds its address on it (`node_links` in
 `environments/prod/terraform.tfvars`, the interface `eno1.4000` with MTU
 1400): `pve-1` holds `10.20.0.1` and `pve-2` `10.20.0.2`.
-`modules/node-link` makes the interface only for a node of `nodes`, so today
-only `pve-1`'s is from configuration; `pve-2`'s was made through the API during
-the rehearsal, and the module takes it over when `pve-2` enters `nodes`. **The zones do not ride the other three yet**. Today every zone is still the SDN VNet described above, on `pve-1`
-alone. Hetzner's firewall filters the vSwitches too
+`modules/node-link` makes the interface for every node of `nodes`; `pve-2`'s was
+made through the API during the rehearsal and was imported into the state when
+it entered `nodes` (#277). **The zones do not ride the other three yet**. Today
+every zone is still the SDN VNet described above, on `pve-1` alone
+(`sdn_nodes`). Hetzner's firewall filters the vSwitches too
 ([`architecture.md`](architecture.md#the-node)).
 
 ## Machines
@@ -172,9 +173,10 @@ its PR. Those marked **(code)** are also validations in
    runs the vm-access playbook (operator decision, 2026-09-29). Besides that,
    SSH between the two `vm-access` connectors, inside `mgmt`, is the only way
    in.
-6. The node stays on DROP, with only 22, 443 and 8006 from `10.10.0.0/22` (22
-   never from `ci`), 9100 from `platform`, and from the internet only SSH as
-   break-glass, closed by the Hetzner firewall until opened **(code)**. The one
+6. Every node stays on DROP, with the same rules on each: only 22, 443 and
+   8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
+   from the internet only SSH as break-glass, closed by the Hetzner firewall
+   until opened **(code)**. The one
    other ingress is the nodes from each other: the datacenter's `management`
    set holds every address of `node_links`, and Proxmox admits its members to
    22, 8006, 3128, 5900 to 5999 and 60000 to 60050, which is what a cluster
