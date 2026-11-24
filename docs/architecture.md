@@ -22,9 +22,15 @@ quorum alone. They talk over one corosync link on the vSwitch `cluster`
 root. Every machine, VM and template names the node it runs on, its `node` in
 `terraform.tfvars`: today all of them say `pve-1`, which runs every VM, the
 templates and the backups, and it alone holds the zones' gateway and SNAT
-(`zone_gateways`). `pve-2` has no guest, and the zones' bridges on it are layer
-2 only. PBS runs on `pve-1`'s host, so its `sbox` storage is reached over the
+(`zone_gateways`). `pve-2` has no VM, and the zones' bridges on it are layer 2
+only. PBS runs on `pve-1`'s host, so its `sbox` storage is reached over the
 link, on `10.20.0.1`. The rest of this section is `pve-1`.
+
+**Containers.** Beside the VMs there are LXC containers, the `containers` map in
+`terraform.tfvars` (`modules/container`): unprivileged, in a zone like any
+guest, with the same firewall on their NIC, from the same matrix, and in the
+same daily backup. The first, `ct-base-01` on `pve-2` in `ci`, is where the
+base services will move to, from `pve-1`'s host; nothing runs in it yet.
 
 **Moving a guest between nodes.** A guest moves live, with its disks, over the
 link: `qm migrate <id> <node> --online --with-local-disks`, run by hand on its

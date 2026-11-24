@@ -250,6 +250,70 @@ variable "vms" {
   }
 }
 
+variable "container_templates" {
+  description = "LXC templates, keyed by name, each downloaded onto one node through the API as vztmpl content, pinned to a build and the digest Proxmox publishes for it."
+  type = map(object({
+    node               = string
+    url                = string
+    checksum           = string
+    checksum_algorithm = optional(string, "sha512")
+  }))
+
+  validation {
+    condition     = alltrue([for t in values(var.container_templates) : contains(var.nodes, t.node)])
+    error_message = "A container template's node must be one of `nodes`."
+  }
+}
+
+variable "containers" {
+  description = "The LXC containers, keyed by name. Their addresses follow the plan in docs/zones.md, shared with the VMs."
+  type = map(object({
+    node         = string
+    template     = string
+    vnet         = string
+    ip           = string
+    cores        = optional(number, 1)
+    memory_mb    = optional(number, 1024)
+    disk_size_gb = optional(number, 8)
+  }))
+
+  validation {
+    condition = alltrue([
+      for c in values(var.containers) :
+      contains(keys(var.zones), c.vnet)
+      && cidrhost("${c.ip}/${split("/", var.zones[c.vnet].cidr)[1]}", 0) == cidrhost(var.zones[c.vnet].cidr, 0)
+      && !contains(flatten([for g in values(var.zone_gateways) : values(g)]), c.ip)
+    ])
+    error_message = "Every container's ip must be inside its vnet's zone and must not be a node's zone_gateways address — see docs/zones.md."
+  }
+
+  validation {
+    condition = length(distinct(concat(
+      [for v in values(var.vms) : v.ip],
+      [for n in values(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes)) : n.ip],
+      [var.cluster.vip, var.cluster.internal_vip],
+      [for c in values(var.containers) : c.ip],
+    ))) == length(var.vms) + length(var.cluster.load_balancers.nodes) + length(var.cluster.servers.nodes) + length(var.cluster.agents.nodes) + 2 + length(var.containers)
+    error_message = "A container shares an address with a VM, a cluster machine or a VIP, or with another container."
+  }
+
+  validation {
+    condition     = length(setintersection(keys(var.containers), concat(keys(var.vms), keys(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes))))) == 0
+    error_message = "A container shares its name with a VM or a cluster machine: the transit matrix finds machines by name."
+  }
+
+  validation {
+    condition     = alltrue([for c in values(var.containers) : contains(var.nodes, c.node)])
+    error_message = "A container's node must be one of `nodes`."
+  }
+
+  # The template is on one node's datastore, which no other node reads.
+  validation {
+    condition     = alltrue([for c in values(var.containers) : contains(keys(var.container_templates), c.template) && try(var.container_templates[c.template].node, "") == c.node])
+    error_message = "A container's template must be one of container_templates, downloaded onto the container's own node."
+  }
+}
+
 variable "node_firewall_enabled" {
   description = "The node's own firewall and its DROP policy: it admits only what the transit matrix sends to the node."
   type        = bool
@@ -272,9 +336,12 @@ variable "transit" {
     to    = list(string)
     proto = optional(string, "tcp")
     ports = list(string)
-    # Machine names in the from zone, VMs or cluster machines: the entry then
-    # admits only their addresses, not the whole zone.
+    # Machine names in the from zone, VMs, cluster machines or containers: the
+    # entry then admits only their addresses, not the whole zone.
     sources = optional(list(string), [])
+    # Machine names in a to zone: the entry then opens only on them, not on
+    # every machine of the zone.
+    targets = optional(list(string), [])
     note    = optional(string, "")
   }))
 
@@ -312,9 +379,26 @@ variable "transit" {
       for e in var.transit : [for s in e.sources :
         (contains(keys(var.vms), s) && try(var.vms[s].vnet, "") == e.from)
         || (contains(keys(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes)), s) && var.cluster.vnet == e.from)
+        || (contains(keys(var.containers), s) && try(var.containers[s].vnet, "") == e.from)
       ]
     ]))
-    error_message = "Every transit source must be a VM of the vms map or a cluster machine, in the entry's from zone."
+    error_message = "Every transit source must be a VM of the vms map, a cluster machine or a container, in the entry's from zone."
+  }
+
+  # A target is a machine of a zone the entry goes to. Towards the node or the
+  # internet there is no machine to narrow to: the entry would open on all.
+  validation {
+    condition = alltrue(flatten([
+      for e in var.transit : [for t in e.targets :
+        !contains(e.to, "node") && !contains(e.to, "internet")
+        && contains(e.to, try(var.zones[lookup(merge(
+          { for name, v in var.vms : name => v.vnet },
+          { for name in keys(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes)) : name => var.cluster.vnet },
+          { for name, c in var.containers : name => c.vnet },
+        ), t, "")].alias, ""))
+      ]
+    ]))
+    error_message = "Every transit target must be a machine of a zone the entry goes to (a VM, a cluster machine or a container), and an entry with targets does not go to the node or the internet."
   }
 
   # docs/zones.md, Invariants, 6.
