@@ -253,8 +253,9 @@ its PR. Those marked **(code)** are also validations in
    in.
 6. Every node stays on DROP, with the same rules on each: only 22 and
    8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
-   from the internet only SSH as break-glass, closed by the Hetzner firewall
-   until opened **(code)**; and 8007, which is PBS on the routing node's host, from the
+   from the internet only SSH as break-glass, on the node's public NIC alone
+   (`iface` set to its `nic` in `node_links`, so no zone reaches 22 through
+   it), closed by the Hetzner firewall until opened **(code)**; and 8007, which is PBS on the routing node's host, from the
    link between the nodes and from `ct-base-01` alone. The one
    other ingress is the nodes from each other: the datacenter's `management`
    set holds every address of `node_links`, and Proxmox admits its members to

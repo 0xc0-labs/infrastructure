@@ -383,6 +383,7 @@ module "zone_firewall" {
   source = "../../modules/zone-firewall"
 
   node_names   = var.nodes
+  node_nics    = { for node, l in var.node_links : node => l.nic }
   enabled      = var.datacenter_firewall_enabled
   node_enabled = var.node_firewall_enabled
   zones        = { for vnet, z in var.zones : vnet => { alias = z.alias, cidr = z.cidr } }

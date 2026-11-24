@@ -166,8 +166,9 @@ the invariants.
   `mgmt`, is the only way in.
 - The node has a DROP policy (`node_firewall_enabled`): 22 and 8006
   from `mgmt`, 8006 from `ci`, 9100 from `platform`, and
-  only SSH (22) from the internet, as break-glass: the Hetzner firewall keeps
-  it closed until the operator opens it, and sshd is key-only. No zone gets
+  only SSH (22) from the internet, as break-glass, bound to the node's public
+  NIC (`eno1`) so no zone reaches it: the Hetzner firewall keeps it closed
+  until the operator opens it, and sshd is key-only. No zone gets
   443: the web names go to `ct-base-01`. All of it from the matrix.
   Day-to-day admin access is over WARP: the node's own over 22 and 8006 at
   `10.10.0.1`, and the web names (Proxmox UI, PBS, RustFS) at `ct-base-01`,
@@ -177,7 +178,8 @@ the invariants.
   admin access to the network it detects. Never remove that alias.
 - A change to the node firewall is tested first by hand, with a rollback
   scheduled on the node itself (systemd timer), before it goes into code.
-- `ci` reaches the node over 8006 (API), never over 22.
+- `ci` reaches the node over 8006 (API), never over 22, and neither does
+  `platform`: from the internet, 22 is admitted on the public NIC alone.
 - No admin interface reaches the internet through the public tunnel: the
   portals, Vault and the Kubernetes API are reached only over WARP, through
   the admin tunnel. No portal is published behind Cloudflare Access either.
