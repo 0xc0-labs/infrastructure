@@ -1,7 +1,8 @@
 output "vms" {
-  description = "Every VM of the cluster, load balancers, servers and agents, with its VMID, VNet and NIC MAC: the zone firewall's and the backup job's input."
+  description = "Every VM of the cluster, load balancers, servers and agents, with its VMID, node, VNet and NIC MAC: the zone firewall's and the backup job's input."
   value = { for name, vm in merge(module.load_balancers, module.servers, module.agents) : name => {
     vm_id = vm.vm_id
+    node  = merge(var.load_balancers.nodes, var.servers.nodes, var.agents.nodes)[name].node
     vnet  = var.vnet
     mac   = vm.mac_address
   } }

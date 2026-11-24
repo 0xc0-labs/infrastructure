@@ -1,5 +1,5 @@
 variable "nodes" {
-  description = "Proxmox nodes in the cluster. The first runs the templates, the VMs, the RKE2 cluster, the backups and the VM firewalls."
+  description = "Proxmox nodes in the cluster. What is per node (the zones' bridges, the link interfaces, the node firewall) takes all of them; every machine, template and VM firewall takes the `node` it names."
   type        = list(string)
 }
 
@@ -108,6 +108,16 @@ variable "zone_gateways" {
   }
 }
 
+variable "migration_bandwidth_limit_mib" {
+  description = "The cluster's limit on the I/O of a guest migration, in MiB/s. The link between the nodes is shared with every zone's traffic."
+  type        = number
+
+  validation {
+    condition     = var.migration_bandwidth_limit_mib > 0
+    error_message = "migration_bandwidth_limit_mib: above zero."
+  }
+}
+
 variable "template_datastore" {
   description = "Datastore holding cloud images and VM templates. Must allow the import content type."
   type        = string
@@ -119,6 +129,7 @@ variable "templates" {
     # 9000-9099: the raw images. Packer's templates take 9100-9149, and their
     # next builds that ID plus 50.
     vm_id              = number
+    node               = string
     image_url          = string
     image_checksum     = string
     checksum_algorithm = optional(string, "sha512")
@@ -126,6 +137,11 @@ variable "templates" {
     disk_size_gb = optional(number, 8)
     bridge       = string
   }))
+
+  validation {
+    condition     = alltrue([for t in values(var.templates) : contains(var.nodes, t.node)])
+    error_message = "A template's node must be one of `nodes`."
+  }
 }
 
 variable "cloudflare_account_id" {
@@ -193,6 +209,7 @@ variable "vm_dns_servers" {
 variable "vms" {
   description = "The VMs, keyed by name. Their addresses follow the plan in docs/zones.md."
   type = map(object({
+    node         = string
     template     = string
     vnet         = string
     ip           = string
@@ -219,6 +236,17 @@ variable "vms" {
   validation {
     condition     = length(distinct([for v in values(var.vms) : v.ip])) == length(var.vms)
     error_message = "Two VMs share an address."
+  }
+
+  validation {
+    condition     = alltrue([for v in values(var.vms) : contains(var.nodes, v.node)])
+    error_message = "A VM's node must be one of `nodes`."
+  }
+
+  # `local` is a dir storage: Proxmox clones to another node only from shared storage.
+  validation {
+    condition     = alltrue([for v in values(var.vms) : !contains(keys(var.templates), v.template) || var.templates[v.template].node == v.node])
+    error_message = "A VM runs on the node of its template: the datastore is not shared, and Proxmox clones to another node only from shared storage."
   }
 }
 
@@ -317,7 +345,8 @@ variable "cluster" {
       memory_mb    = optional(number, 1024)
       disk_size_gb = optional(number, 10)
       nodes = map(object({
-        ip = string
+        node = string
+        ip   = string
         # Bump to recreate the VM, as in vms.
         rebuild = optional(number, 0)
       }))
@@ -332,6 +361,7 @@ variable "cluster" {
       # Blank disks on top of the root one, scsi1 onwards.
       data_disks_gb = optional(list(number), [])
       nodes = map(object({
+        node    = string
         ip      = string
         rebuild = optional(number, 0)
       }))
@@ -344,6 +374,7 @@ variable "cluster" {
       disk_size_gb  = optional(number, 100)
       data_disks_gb = optional(list(number), [])
       nodes = optional(map(object({
+        node    = string
         ip      = string
         rebuild = optional(number, 0)
       })), {})
@@ -364,6 +395,21 @@ variable "cluster" {
       for n in merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes) : !contains([var.cluster.vip, var.cluster.internal_vip], n.ip)
     ]) && var.cluster.vip != var.cluster.internal_vip
     error_message = "No cluster machine may take a VIP, and the two VIPs must differ."
+  }
+
+  validation {
+    condition     = alltrue([for n in values(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes)) : contains(var.nodes, n.node)])
+    error_message = "A cluster machine's node must be one of `nodes`."
+  }
+
+  # `local` is a dir storage: Proxmox clones to another node only from shared storage.
+  validation {
+    condition = alltrue(flatten([
+      for g in [var.cluster.load_balancers, var.cluster.servers, var.cluster.agents] : [
+        for n in values(g.nodes) : !contains(keys(var.templates), g.template) || var.templates[g.template].node == n.node
+      ]
+    ]))
+    error_message = "A cluster machine runs on the node of its template: the datastore is not shared, and Proxmox clones to another node only from shared storage."
   }
 
   validation {

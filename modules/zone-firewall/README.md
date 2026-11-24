@@ -77,9 +77,9 @@ No modules.
 | <a name="input_node_enabled"></a> [node\_enabled](#input\_node\_enabled) | The node's own firewall: DROP on everything but its rules. Needs `enabled` too. | `bool` | n/a | yes |
 | <a name="input_node_link_cidr"></a> [node\_link\_cidr](#input\_node\_link\_cidr) | The link between the nodes, as a CIDR. It is the source of a transit entry whose `from` is `nodes`. | `string` | n/a | yes |
 | <a name="input_node_links"></a> [node\_links](#input\_node\_links) | Every node's address on the link between the nodes, keyed by node name, a node of `nodes` or not. They become the datacenter's `management` set. | `map(string)` | n/a | yes |
-| <a name="input_node_names"></a> [node\_names](#input\_node\_names) | The nodes that get the node's firewall options and rules, the same on each. VM firewalls go on the first one, where every VM runs. | `list(string)` | n/a | yes |
+| <a name="input_node_names"></a> [node\_names](#input\_node\_names) | The nodes that get the node's firewall options and rules, the same on each. A VM's firewall goes on the node the VM runs on, which `vms` names. | `list(string)` | n/a | yes |
 | <a name="input_transit"></a> [transit](#input\_transit) | The transit matrix, validated by the root. Each entry becomes rules commented "<from> -> <to>: <note>". sources, when not empty, narrows the source from the whole from zone to those addresses. | <pre>list(object({<br/>    from    = string<br/>    to      = list(string)<br/>    proto   = string<br/>    ports   = list(string)<br/>    sources = list(string)<br/>    note    = string<br/>  }))</pre> | n/a | yes |
-| <a name="input_vms"></a> [vms](#input\_vms) | Every VM, with its VMID, VNet and NIC MAC. A new MAC means the VM was recreated. | <pre>map(object({<br/>    vm_id = number<br/>    vnet  = string<br/>    mac   = string<br/>  }))</pre> | n/a | yes |
+| <a name="input_vms"></a> [vms](#input\_vms) | Every VM, with its VMID, node, VNet and NIC MAC. A new MAC means the VM was recreated. | <pre>map(object({<br/>    vm_id = number<br/>    node  = string<br/>    vnet  = string<br/>    mac   = string<br/>  }))</pre> | n/a | yes |
 | <a name="input_zones"></a> [zones](#input\_zones) | Every zone, keyed by VNet ID: its alias (the name the transit matrix uses) and CIDR. | <pre>map(object({<br/>    alias = string<br/>    cidr  = string<br/>  }))</pre> | n/a | yes |
 
 ## Outputs

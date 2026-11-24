@@ -1,8 +1,3 @@
-variable "node_name" {
-  description = "Proxmox node."
-  type        = string
-}
-
 variable "datastore_id" {
   description = "Datastore for the disks and the cloud-init drives."
   type        = string
@@ -44,13 +39,14 @@ variable "ssh_public_keys" {
 }
 
 variable "load_balancers" {
-  description = "The HAProxy + keepalived pair: the template to clone, the size, and each VM's address."
+  description = "The HAProxy + keepalived pair: the VMID of the template to clone on each node, the size, and each VM's node and address."
   type = object({
-    template_vm_id = number
-    cores          = number
-    memory_mb      = number
-    disk_size_gb   = number
+    template_vm_ids = map(number)
+    cores           = number
+    memory_mb       = number
+    disk_size_gb    = number
     nodes = map(object({
+      node    = string
       ip      = string
       rebuild = number
     }))
@@ -63,15 +59,16 @@ variable "load_balancers" {
 }
 
 variable "servers" {
-  description = "The RKE2 servers — control plane, etcd and workloads together: the template, the size, the data disks, and each VM's address."
+  description = "The RKE2 servers — control plane, etcd and workloads together: the VMID of the template on each node, the size, the data disks, and each VM's node and address."
   type = object({
-    template_vm_id = number
-    cpu_type       = string
-    cores          = number
-    memory_mb      = number
-    disk_size_gb   = number
-    data_disks_gb  = list(number)
+    template_vm_ids = map(number)
+    cpu_type        = string
+    cores           = number
+    memory_mb       = number
+    disk_size_gb    = number
+    data_disks_gb   = list(number)
     nodes = map(object({
+      node    = string
       ip      = string
       rebuild = number
     }))
@@ -84,15 +81,16 @@ variable "servers" {
 }
 
 variable "agents" {
-  description = "The RKE2 agents — workloads only, no control plane or etcd: the template, the size, the data disks, and each VM's address. An empty nodes map for none."
+  description = "The RKE2 agents — workloads only, no control plane or etcd: the VMID of the template on each node, the size, the data disks, and each VM's node and address. An empty nodes map for none."
   type = object({
-    template_vm_id = number
-    cpu_type       = string
-    cores          = number
-    memory_mb      = number
-    disk_size_gb   = number
-    data_disks_gb  = list(number)
+    template_vm_ids = map(number)
+    cpu_type        = string
+    cores           = number
+    memory_mb       = number
+    disk_size_gb    = number
+    data_disks_gb   = list(number)
     nodes = map(object({
+      node    = string
       ip      = string
       rebuild = number
     }))

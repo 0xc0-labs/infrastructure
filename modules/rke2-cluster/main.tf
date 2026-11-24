@@ -9,8 +9,8 @@ module "load_balancers" {
 
   name           = each.key
   rebuild        = each.value.rebuild
-  node_name      = var.node_name
-  template_vm_id = var.load_balancers.template_vm_id
+  node_name      = each.value.node
+  template_vm_id = var.load_balancers.template_vm_ids[each.value.node]
   datastore_id   = var.datastore_id
 
   vnet         = var.vnet
@@ -34,8 +34,8 @@ module "servers" {
 
   name           = each.key
   rebuild        = each.value.rebuild
-  node_name      = var.node_name
-  template_vm_id = var.servers.template_vm_id
+  node_name      = each.value.node
+  template_vm_id = var.servers.template_vm_ids[each.value.node]
   datastore_id   = var.datastore_id
   cpu_type       = var.servers.cpu_type
 
@@ -61,8 +61,8 @@ module "agents" {
 
   name           = each.key
   rebuild        = each.value.rebuild
-  node_name      = var.node_name
-  template_vm_id = var.agents.template_vm_id
+  node_name      = each.value.node
+  template_vm_id = var.agents.template_vm_ids[each.value.node]
   datastore_id   = var.datastore_id
   cpu_type       = var.agents.cpu_type
 

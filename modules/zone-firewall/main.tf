@@ -129,7 +129,7 @@ resource "terraform_data" "vm" {
 resource "proxmox_virtual_environment_firewall_options" "main" {
   for_each = var.vms
 
-  node_name = var.node_names[0]
+  node_name = each.value.node
   vm_id     = each.value.vm_id
 
   enabled       = true
@@ -145,7 +145,7 @@ resource "proxmox_virtual_environment_firewall_options" "main" {
 resource "proxmox_virtual_environment_firewall_rules" "main" {
   for_each = { for name, vm in var.vms : name => vm if contains(keys(local.groups), vm.vnet) }
 
-  node_name = var.node_names[0]
+  node_name = each.value.node
   vm_id     = each.value.vm_id
 
   rule {

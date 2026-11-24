@@ -1,5 +1,5 @@
 variable "node_names" {
-  description = "The nodes that get the node's firewall options and rules, the same on each. VM firewalls go on the first one, where every VM runs."
+  description = "The nodes that get the node's firewall options and rules, the same on each. A VM's firewall goes on the node the VM runs on, which `vms` names."
   type        = list(string)
 
   validation {
@@ -57,9 +57,10 @@ variable "node_enabled" {
 }
 
 variable "vms" {
-  description = "Every VM, with its VMID, VNet and NIC MAC. A new MAC means the VM was recreated."
+  description = "Every VM, with its VMID, node, VNet and NIC MAC. A new MAC means the VM was recreated."
   type = map(object({
     vm_id = number
+    node  = string
     vnet  = string
     mac   = string
   }))

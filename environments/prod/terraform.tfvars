@@ -1,7 +1,5 @@
 # Secrets come from the environment, never from here.
 
-# Order matters: the first node runs the templates, the VMs, the cluster, the
-# backups and the VM firewalls (`var.nodes[0]`).
 nodes = ["pve-1", "pve-2"]
 
 # The link between the nodes: the vSwitch `cluster` (docs/zones.md, vSwitches).
@@ -10,6 +8,10 @@ node_link = {
   cidr = "10.20.0.0/24"
   mtu  = 1400
 }
+
+# The vSwitch is 1 Gbit and shared with every zone's traffic between the
+# nodes: a migration at full speed would starve it.
+migration_bandwidth_limit_mib = 60
 
 node_links = {
   "pve-1" = { nic = "eno1", address = "10.20.0.1" }
@@ -51,6 +53,7 @@ template_datastore = "local"
 templates = {
   "debian-13-cloud" = {
     vm_id          = 9000
+    node           = "pve-1"
     image_url      = "https://cloud.debian.org/images/cloud/trixie/20260914-2601/debian-13-genericcloud-amd64-20260914-2601.qcow2"
     image_checksum = "95e110dfcdbd0ed8a82a75ed9579802f9950cabf51a810dcc6388e81bc778188713878b9f28d583a0ea602fbf48b35996ae9ad37f584166d8fbd6489df248f53"
     bridge         = "mgmt"
@@ -58,6 +61,7 @@ templates = {
   # Rocky publishes only SHA-256.
   "rocky-10-cloud" = {
     vm_id              = 9001
+    node               = "pve-1"
     image_url          = "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base-10.2-20260525.0.x86_64.qcow2"
     image_checksum     = "9fc9e9ff16888bb68ac39b0392e25c9c92684d50c85f1cce6ab549363bbc4b48"
     checksum_algorithm = "sha256"
@@ -82,6 +86,7 @@ vm_dns_servers = ["1.1.1.1", "1.0.0.1"]
 # The VMs outside the cluster. The addressing plan is in docs/zones.md.
 vms = {
   "vm-access-01" = {
+    node      = "pve-1"
     rebuild   = 1
     template  = "debian-13-base"
     vnet      = "mgmt"
@@ -91,6 +96,7 @@ vms = {
   }
   # One connector can be rebuilt while the other keeps admin access.
   "vm-access-02" = {
+    node      = "pve-1"
     rebuild   = 2
     template  = "debian-13-base"
     vnet      = "mgmt"
@@ -100,6 +106,7 @@ vms = {
   }
   # Two, so a job on one can rebuild the other.
   "vm-ci-01" = {
+    node         = "pve-1"
     rebuild      = 1
     template     = "debian-13-runner"
     vnet         = "ci"
@@ -109,6 +116,7 @@ vms = {
     disk_size_gb = 32
   }
   "vm-ci-02" = {
+    node         = "pve-1"
     template     = "debian-13-runner"
     vnet         = "ci"
     ip           = "10.10.1.20"
@@ -138,8 +146,8 @@ cluster = {
   load_balancers = {
     template = "debian-13-base"
     nodes = {
-      "vm-lb-01" = { ip = "10.10.4.11" }
-      "vm-lb-02" = { ip = "10.10.4.12" }
+      "vm-lb-01" = { node = "pve-1", ip = "10.10.4.11" }
+      "vm-lb-02" = { node = "pve-1", ip = "10.10.4.12" }
     }
   }
   servers = {
@@ -148,9 +156,9 @@ cluster = {
     disk_size_gb  = 50
     data_disks_gb = [100, 100]
     nodes = {
-      "vm-rke2-01" = { ip = "10.10.4.21", rebuild = 1 }
-      "vm-rke2-02" = { ip = "10.10.4.22", rebuild = 1 }
-      "vm-rke2-03" = { ip = "10.10.4.23", rebuild = 1 }
+      "vm-rke2-01" = { node = "pve-1", ip = "10.10.4.21", rebuild = 1 }
+      "vm-rke2-02" = { node = "pve-1", ip = "10.10.4.22", rebuild = 1 }
+      "vm-rke2-03" = { node = "pve-1", ip = "10.10.4.23", rebuild = 1 }
     }
   }
   # Workers only (operator decision, 2026-09-30): etcd stays with the servers.
@@ -159,7 +167,7 @@ cluster = {
     disk_size_gb  = 50
     data_disks_gb = [100, 100]
     nodes = {
-      "vm-rke2-04" = { ip = "10.10.4.24" }
+      "vm-rke2-04" = { node = "pve-1", ip = "10.10.4.24" }
     }
   }
 }
