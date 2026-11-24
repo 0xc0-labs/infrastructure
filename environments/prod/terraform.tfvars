@@ -158,8 +158,8 @@ datacenter_firewall_enabled = true
 # The Hetzner Rescue system is the way back in.
 node_firewall_enabled = true
 
-# Traefik on the node, outside IaC.
-node_web_hostnames = ["pve.0xc0.cc", "pbs.0xc0.cc", "s3.0xc0.cc", "s3-console.0xc0.cc"]
+# Served by Traefik in ct-base-01.
+base_service_hostnames = ["pve.0xc0.cc", "pbs.0xc0.cc", "s3.0xc0.cc", "s3-console.0xc0.cc"]
 
 cluster = {
   vnet = "platform"
@@ -203,12 +203,11 @@ transit = [
   { from = "mgmt", to = ["ci"], ports = [22], note = "admin SSH, through the vm-access tunnel" },
   { from = "mgmt", to = ["platform"], ports = [22, 80, 443, 6443, 8200], note = "admin: SSH, both VIPs over WARP (443; 80 only redirects, on the public one), the Kubernetes API, Vault" },
   { from = "mgmt", to = ["node"], ports = [22, 8006], note = "admin: SSH and the Proxmox API, through the vm-access tunnel" },
-  { from = "mgmt", to = ["node"], ports = [443], note = "Traefik on the host (Proxmox UI, PBS, RustFS), over WARP; never from the internet" },
   { from = "ci", to = ["platform"], ports = [22, 443, 6443], note = "the runner: SSH to configure the VMs, Vault on the internal VIP, and the Kubernetes API" },
   # The one way into mgmt from another zone (operator decision, 2026-09-29).
   { from = "ci", to = ["mgmt"], ports = [22], sources = ["vm-ci-01", "vm-ci-02"], note = "the pipeline's playbooks, from the CI VMs only" },
   { from = "ci", to = ["ci"], ports = [22], sources = ["vm-ci-01", "vm-ci-02"], note = "the pipeline's playbooks, between the CI VMs" },
-  { from = "ci", to = ["node"], ports = [443, 8006], note = "Proxmox API and RustFS, through Traefik on 443. NEVER 22 towards the node from ci" },
+  { from = "ci", to = ["node"], ports = [8006], note = "the Proxmox API, for the pipeline. NEVER 22 towards the node from ci" },
   { from = "mgmt", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "Traefik in ct-base-01 (Proxmox UI, PBS, RustFS), over WARP" },
   { from = "ci", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "the runners towards RustFS and the Proxmox API, through Traefik in ct-base-01" },
   { from = "platform", to = ["platform"], ports = ["2379-2381", 6443, 9099, 9345, 10250, 10257, 10259, "30000-32767"], note = "the cluster: etcd and its metrics, API, Canal health, supervisor, kubelet, controller-manager and scheduler metrics, NodePorts; the LB towards the nodes" },
@@ -226,7 +225,7 @@ transit = [
 # opens.
 node_firewall = {
   admin_zones = ["mgmt", "ci"]
-  admin_ports = [22, 443, 8006, 8007]
+  admin_ports = [22, 8006, 8007]
 }
 
 # Every VM, to PBS on the Storage Box (operator decision, 2026-09-29).

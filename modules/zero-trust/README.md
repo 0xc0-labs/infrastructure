@@ -14,8 +14,8 @@ The account-wide Zero Trust singletons.
 - **One-time PIN identity provider** — the login `access-app` offers: a code
   sent to the visitor's email.
 - **Gateway DNS override** — resolves `private_hostnames` to
-  `private_hostnames_ip` for WARP devices, so the node's web front is reached
-  through the tunnel instead of its public record.
+  `private_hostnames_ip` for WARP devices, so the base services are reached
+  through the tunnel instead of their public record.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

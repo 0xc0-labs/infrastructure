@@ -42,12 +42,12 @@ resource "cloudflare_zero_trust_access_application" "main" {
   policies   = [{ id = cloudflare_zero_trust_access_policy.main.id, precedence = 1 }]
 }
 
-# The node's web front answers on its mgmt address too, so the public 443
-# stays closed.
+# The base services answer on a private address, so the public 443 stays
+# closed.
 resource "cloudflare_zero_trust_gateway_policy" "main" {
   account_id  = var.account_id
   name        = "${var.team_name} private hostnames"
-  description = "Resolves the node's web front to its address in mgmt, through WARP"
+  description = "Resolves the base services' hostnames to their private address, through WARP"
   action      = "override"
   enabled     = true
   filters     = ["dns"]

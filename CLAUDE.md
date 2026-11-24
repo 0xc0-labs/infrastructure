@@ -8,11 +8,13 @@ in mdadm RAID 0, no ZFS. A single node. The host is router and
 firewall and holds `.1` in every zone; `eno1` keeps the public IP, each zone
 is an SDN VNet with no physical port, and egress is SNAT through `eno1`.
 
-The host also runs Traefik, RustFS and PBS. They are **not managed from this
-repo** and must never be touched by it: Traefik is the reverse proxy for the
-Proxmox UI, PBS and RustFS; RustFS holds the OpenTofu state; PBS backs up to a
-Hetzner Storage Box. Any change here that could cut the host's public access —
-firewall rules on `eno1` above all — puts those three at risk.
+The host also runs PBS and Docker. They are **not managed from this repo** and
+must never be touched by it: PBS backs up to a Hetzner Storage Box. Traefik,
+the reverse proxy for the Proxmox UI, PBS and RustFS, and RustFS, which holds
+the OpenTofu state, run in `ct-base-01` and are managed here: OpenTofu makes
+the container, Ansible configures what is inside it. Any change here that could
+cut the host's public access — firewall rules on `eno1` above all — puts PBS
+at risk.
 
 OpenTofu (the official cloud image as a raw template, VMs, network, firewall)
 → Packer (the templates VMs clone: `debian-13-base`, `rocky-10-base`, and the
@@ -73,8 +75,7 @@ needs no forwarding rule of its own: Docker carries one setting by hand,
 `ip-forward-no-drop`, that keeps the `FORWARD` policy ACCEPT
 (`docs/architecture.md`, The node). A zone that must never egress would need a
 DROP rule in `DOCKER-USER`; the `node_forwarding` role that wrote it is in
-git history (#101). Traefik, RustFS, PBS and
-Docker itself are never touched from this repo.
+git history (#101). PBS and Docker itself are never touched from this repo.
 
 Ansible reaches every VM directly over WARP.
 
@@ -159,13 +160,15 @@ the invariants.
   so the pipeline can run the vm-access playbook (operator decision,
   2026-09-29). Besides that, SSH between the `vm-access` connectors, inside
   `mgmt`, is the only way in.
-- The node has a DROP policy (`node_firewall_enabled`): 22, 443 and 8006
-  from `mgmt`, 443 and 8006 from `ci`, 9100 from `platform`, and
+- The node has a DROP policy (`node_firewall_enabled`): 22 and 8006
+  from `mgmt`, 8006 from `ci`, 9100 from `platform`, and
   only SSH (22) from the internet, as break-glass: the Hetzner firewall keeps
-  it closed until the operator opens it, and sshd is key-only. All of it from
-  the matrix. Day-to-day admin access to the node, Traefik included, is over
-  WARP, to `10.10.0.1`: Gateway resolves `node_web_hostnames` there. The
-  Hetzner Rescue system is the last way back in.
+  it closed until the operator opens it, and sshd is key-only. No zone gets
+  443: the web names go to `ct-base-01`. All of it from the matrix.
+  Day-to-day admin access is over WARP: the node's own over 22 and 8006 at
+  `10.10.0.1`, and the web names (Proxmox UI, PBS, RustFS) at `ct-base-01`,
+  where Gateway resolves `base_service_hostnames`. The Hetzner Rescue system
+  is the last way back in.
 - `local_network` is overridden to loopback, so Proxmox grants no implicit
   admin access to the network it detects. Never remove that alias.
 - A change to the node firewall is tested first by hand, with a rollback

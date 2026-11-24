@@ -170,14 +170,14 @@ After it, check with `ss -tlnp` that only 22 listens on the public address.
   they are needed: [`docs/architecture.md`](docs/architecture.md#the-node).
 
 [`docs/architecture.md`](docs/architecture.md#the-node) describes `pve-1`,
-which also runs Docker, PBS, Traefik and RustFS. Those paragraphs do not apply
-to a node without them.
+which also runs Docker and PBS. Those paragraphs do not apply to a node
+without them.
 
 ### 5. Not before the join
 
 Creating or joining a cluster ([Forming the cluster](#forming-the-cluster)),
-any guest (a node joins empty), Docker, PBS,
-Traefik. The vSwitches the node is attached to are in
+any guest (a node joins empty), Docker, PBS.
+The vSwitches the node is attached to are in
 [`docs/zones.md`](docs/zones.md#vswitches).
 
 ## Forming the cluster
@@ -344,8 +344,9 @@ they restart.
 `playbooks/ct-base.yml` configures `ct-base-01` (`10.10.1.30`, group
 `base_services`) from the pipeline, like every VM: the `rustfs` and `traefik`
 roles, each a pinned binary under systemd, no Docker. Ansible connects as
-`root`, with CI's key. Nothing points at the container until
-infrastructure#298.
+`root`, with CI's key. The four names (`pve`, `pbs`, `s3`, `s3-console`) reach
+it: WARP's Gateway resolves `base_service_hostnames` to its address, and the
+CI VMs' `/etc/hosts` holds `s3` and `pve` there (`github_runner_hosts`).
 
 What runs in it:
 
@@ -414,4 +415,5 @@ To add or remove a viewer, in Cloudflare: Zero Trust → Access → Access group
 → the group → edit its emails. No apply is needed: OpenTofu ignores the group's
 members and owns everything else (`modules/access-app/README.md`).
 
-The Traefik, RustFS and PBS running on the node are **not** managed here.
+The PBS running on the node, and the Docker beside it, are **not** managed
+here. Traefik and RustFS are, in `ct-base-01`.

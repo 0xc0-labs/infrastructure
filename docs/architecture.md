@@ -30,8 +30,9 @@ link, on `10.20.0.1`. The rest of this section is `pve-1`.
 `terraform.tfvars` (`modules/container`): unprivileged, in a zone like any
 guest, with the same firewall on their NIC, from the same matrix, and in the
 same daily backup. The first, `ct-base-01` on `pve-2` in `ci`, is where the
-base services will move to, from `pve-1`'s host: Traefik and RustFS run in it,
-configured from the pipeline, and nothing points at it yet.
+base services run in: Traefik and RustFS, configured from the pipeline. The
+names `pve`, `pbs`, `s3` and `s3-console` reach it, from WARP and from the CI
+VMs, and the nodes admit 443 from no zone.
 
 **Moving a guest between nodes.** A guest moves live, with its disks, over the
 link: `qm migrate <id> <node> --online --with-local-disks`, run by hand on its
@@ -52,16 +53,19 @@ flowchart TB
   subgraph host["pve-1 — Hetzner dedicated"]
     eno1["eno1<br/>public IP"]
 
-    subgraph base["Base services — outside IaC"]
-      traefik["Traefik<br/>reverse proxy, 443"]
+    subgraph base["On the host — outside IaC"]
       pveui["Proxmox UI / API"]
       pbs["PBS"]
-      rustfs["RustFS<br/>OpenTofu state"]
     end
 
     subgraph bridges["Zone bridges — managed by OpenTofu"]
       zones["three bridges over the vSwitches, one per zone<br/>host is .1 in each"]
     end
+  end
+
+  subgraph ctbase["ct-base-01 — pve-2, ci, managed here"]
+    traefik["Traefik<br/>reverse proxy, 443"]
+    rustfs["RustFS<br/>OpenTofu state"]
   end
 
   sbox[("Hetzner Storage Box<br/>PBS datastore")]
@@ -74,16 +78,19 @@ flowchart TB
   zones -- "SNAT" --> eno1 --> internet
 ```
 
-- **Base services** — Traefik, RustFS and PBS run on the host itself. They are
-  not managed by any repo in this org and nothing here may touch them. Traefik
-  is only the host's reverse proxy; it is not the application ingress.
+- **Base services** — PBS runs on the host itself, not managed by any repo in
+  this org, and nothing here may touch it. Traefik and RustFS run in
+  `ct-base-01`, managed here: OpenTofu makes the container and Ansible
+  configures what is inside it. That Traefik is only the reverse proxy of the
+  Proxmox UI, PBS and RustFS; it is not the application ingress.
 - **Disks** — RAID 0, by decision: there is no redundancy on the node. One
   NVMe failure loses it, and recovery is a reinstall plus a restore from PBS
   on the Storage Box.
 - **`eno1`** keeps the public IP. Guests never attach to it: Hetzner drops
   unknown MACs on the public interface. They live on the zones' bridges, and reach
   the internet through SNAT on the host.
-- **Docker** runs Traefik and RustFS, and is configured by hand, outside IaC,
+- **Docker** still runs the Traefik and RustFS that `ct-base-01` replaced,
+  stopped by hand, and is configured by hand, outside IaC,
   with one setting the zone firewall depends on. `/etc/docker/daemon.json`:
 
   ```json
@@ -150,7 +157,7 @@ flowchart TB
   incoming rules Hetzner allows.
 
 Some of these bullets hold only for `pve-1`, each for its own reason. The base
-services and Docker, because `pve-1` runs Docker, PBS, Traefik and RustFS: they
+services and Docker, because `pve-1` runs Docker and PBS: they
 do not apply to a node installed without them, as in the README's
 [Adding a node](../README.md#adding-a-node). Disks, because of its RAID level:
 `pve-1` is RAID 0, and `pve-2` is RAID 1. The forwarding is only for the node
@@ -211,9 +218,8 @@ flowchart LR
   mgmt -- "22" --> ci
   mgmt -- "22, 80, 443, 6443, 8200" --> platform
   mgmt -- "22, 8006" --> node
-  mgmt -- "443" --> node
   ci -- "22, 443 (Vault), 6443" --> platform
-  ci -- "443, 8006" --> node
+  ci -- "8006" --> node
   platform -- "9100" --> node
   platform -- "443" --> internet
   internet -- "22, break-glass" --> node
@@ -239,11 +245,13 @@ a 1400 route loses whatever TCP's segment size does not cover
 the `rke2_server` role, is 1350, the guests' 1400 minus VXLAN's 50 bytes. A
 pod keeps the MTU it was created with until it is recreated.
 
-The node accepts 22, 443 and 8006 from `mgmt`, 443 and 8006 from `ci`, and the
-node-metrics scrape (9100) from `platform`. From the internet it accepts only
-SSH, as break-glass for when WARP is down: the Hetzner firewall keeps it
-closed until the operator opens it. Traefik is reached over WARP, where
-Gateway resolves its hostnames to `10.10.0.1`.
+The node accepts 22 and 8006 from `mgmt`, 8006 from `ci`, and the
+node-metrics scrape (9100) from `platform`; no zone gets 443. From the internet
+it accepts only SSH, as break-glass for when WARP is down: the Hetzner firewall
+keeps it closed until the operator opens it. Traefik, in `ct-base-01`, is
+reached over WARP, where Gateway resolves `base_service_hostnames` to the
+container's address; the CI VMs resolve `s3` and `pve` there through their
+`/etc/hosts`.
 
 ## Web traffic
 
@@ -319,8 +327,8 @@ network, not by name.
 The **way back in** if this breaks is the Hetzner Rescue system.
 
 WARP goes through the two `vm-access` connectors. The node's own
-firewall is on DROP: SSH, the Proxmox UI on 8006 and Traefik on 443 answer
-on `10.10.0.1`. The public IP accepts only break-glass SSH, closed at the
+firewall is on DROP: SSH and the Proxmox UI on 8006 answer on `10.10.0.1`,
+and Traefik's 443 on `ct-base-01`'s address. The public IP accepts only break-glass SSH, closed at the
 Hetzner firewall until it is needed.
 
 ## Changes, CI and state
