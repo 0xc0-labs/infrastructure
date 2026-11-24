@@ -108,9 +108,11 @@ Some of these bullets hold only for `pve-1`, each for its own reason. The base
 services and Docker, because `pve-1` runs Docker, PBS, Traefik and RustFS: they
 do not apply to a node installed without them, as in the README's
 [Adding a node](../README.md#adding-a-node). Disks, because of its RAID level:
-`pve-1` is RAID 0, and `pve-2` is RAID 1. The forwarding, the offloads and Hetzner's
-firewall do apply to every node that routes for the zones, and are set by hand
-there.
+`pve-1` is RAID 0, and `pve-2` is RAID 1. The forwarding is only for the node
+that routes for the zones, `pve-1`: the gateway and SNAT are its own, and a
+guest on another node reaches them over the vSwitch at layer 2. The offloads
+apply to any node whose NIC's driver is `e1000e`, and Hetzner's firewall to
+every node. All three are set by hand.
 
 ## Templates
 

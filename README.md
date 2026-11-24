@@ -194,8 +194,9 @@ Before it: both nodes at the same `pve-manager` (`pveversion`) and corosync
 (`corosync -v`): bring the one behind level first. A kernel waiting for a
 reboot does not stop a join.
 
-1. **Forwarding, on a node that routes for the zones** (`pve-1`; a node
-   installed later that will run guests too). Why:
+1. **Forwarding, on a node that routes for the zones** (`pve-1`, which
+   holds the zones' gateway and SNAT; a node whose guests reach them over the
+   vSwitch needs none). Why:
    [`docs/architecture.md`](docs/architecture.md#the-node).
 
    ```
