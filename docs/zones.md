@@ -111,25 +111,34 @@ undone (#284). Two things broke, and each needs its own fix:
 
 ## Machines
 
-What exists is the `vms` map in `terraform.tfvars`, and `cluster` for the RKE2
-nodes and their load balancers. Each machine names the Proxmox node it runs on,
-its `node`, which must be one of `nodes` **(code)**; every one says `pve-1`
-today. A guest moves between nodes live, with its disks, over the link, and the
+What exists is the `vms` map in `terraform.tfvars`, `cluster` for the RKE2
+nodes and their load balancers, and `containers` for the LXC containers. Each
+machine names the Proxmox node it runs on, its `node`, which must be one of
+`nodes` **(code)**; every one says `pve-1` today, but `ct-base-01`, on `pve-2`.
+A guest moves between nodes live, with its disks, over the link, and the
 `node` is changed only after the move ([`architecture.md`](architecture.md#the-node)).
 The addressing plan, so that no address is handed out twice:
 
-| VM | Zone | IP |
+| Machine | Zone | IP |
 |---|---|---|
 | `vm-access-01` | mgmt | 10.10.0.10 |
 | `vm-access-02` | mgmt | 10.10.0.20 |
 | `vm-ci-01` | ci | 10.10.1.10 |
 | `vm-ci-02` | ci | 10.10.1.20 |
+| `ct-base-01` | ci | 10.10.1.30 |
 | `vm-lb-01` | platform | 10.10.4.11 |
 | `vm-lb-02` | platform | 10.10.4.12 |
 | `vm-rke2-01` | platform | 10.10.4.21 |
 | `vm-rke2-02` | platform | 10.10.4.22 |
 | `vm-rke2-03` | platform | 10.10.4.23 |
 | `vm-rke2-04` | platform | 10.10.4.24 |
+
+`ct-base-01` is an unprivileged LXC container, Debian 13, 1 core, 1 GiB and 8 GB
+(`modules/container`), the home of the base services that run on `pve-1`'s host
+today: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
+holds the OpenTofu state, and nothing enters `mgmt` from another zone but SSH
+from the CI VMs (invariant 5). Its gateway is `pve-1`'s `.1`, across the
+vSwitch, like every guest's on `pve-2`. Nothing runs in it yet.
 
 The `platform` VIPs are not VMs: they are the keepalived addresses the two
 `vm-lb` VMs share, in front of HAProxy, and they always move together.
@@ -181,8 +190,20 @@ none. Every rule the module creates is commented `<from> -> <to>: <note>`, so a
 rule in Proxmox always traces back to its line of the matrix.
 
 - An entry towards a **zone** becomes an inbound rule in that zone's security
-  group (`zone-<vnet>`), sourced from the `from` zone's CIDR. Every VM gets its
-  zone's group, input DROP, and its own firewall on.
+  group (`zone-<vnet>`), sourced from the `from` zone's CIDR. Every guest, VM
+  or container, gets its zone's group, input DROP, and its own firewall on. A
+  container's rules are the same, set on its container ID.
+- An entry may name **`targets`**: machines of its `to` zone, by name. It then
+  opens only on them, as rules on their own firewalls beside the zone's group,
+  and not on every machine of the zone, which is what an entry without `targets`
+  does. `sources` narrows where traffic comes from, `targets` where it goes. A
+  validation **(code)** refuses a target that is not a machine of a zone the
+  entry goes to, and an entry with targets that also goes to the node or the
+  internet. Traefik in `ct-base-01` is why it exists: its 443 opens from `mgmt`,
+  for WARP, and from `ci`, for the runners, but not on the CI VMs, where jobs
+  run code of their own. `ct-base-01` also reaches PBS on the host, 8007, as the
+  one source the entry names, which is why 8007 is among the node's
+  `admin_ports`: from an admin zone, the node admits no others.
 - An entry towards the **node** becomes a node rule. From a control zone only
   the node's `admin_ports` (`node_firewall`) survive: `mgmt`'s admin entry
   gives it 22 and 8006 on the node, and its Traefik entry 443; `ci` gets 443
@@ -207,8 +228,8 @@ its PR. Those marked **(code)** are also validations in
 
 1. Every IP falls inside its zone and none is the host's `.1` **(code)**, and
    none lands on a reserved range.
-2. No duplicate IPs in the `vms` and `cluster` maps **(code)**, nor in the
-   Ansible inventory, which mirrors them by hand.
+2. No duplicate IPs in the `vms`, `cluster` and `containers` maps **(code)**,
+   nor in the Ansible inventory, which mirrors them by hand.
 3. Every firewall rule traces to an entry of the matrix, through the
    `zone-firewall` module, never a resource written by hand, and its comment
    is `<from> -> <to>: <note>`. A rule with no backing is a **critical**
@@ -227,8 +248,8 @@ its PR. Those marked **(code)** are also validations in
 6. Every node stays on DROP, with the same rules on each: only 22, 443 and
    8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
    from the internet only SSH as break-glass, closed by the Hetzner firewall
-   until opened **(code)**; and 8007 from the link between the nodes, which is
-   PBS on `pve-1`'s host. The one
+   until opened **(code)**; and 8007, which is PBS on `pve-1`'s host, from the
+   link between the nodes and from `ct-base-01` alone. The one
    other ingress is the nodes from each other: the datacenter's `management`
    set holds every address of `node_links`, and Proxmox admits its members to
    22, 8006, 3128, 5900 to 5999 and 60000 to 60050, which is what a cluster
@@ -245,8 +266,8 @@ its PR. Those marked **(code)** are also validations in
    tunnel serves every name of `public_domains` (`terraform.tfvars`), but only
    a name with a public record reaches it, and external-dns (gitops) creates
    those only for the routes marked public. A portal's name never has one.
-8. This document agrees with the code: every machine of the `vms` and
-   `cluster` maps is in the addressing plan, at the same address, and the
+8. This document agrees with the code: every machine of the `vms`, `cluster`
+   and `containers` maps is in the addressing plan, at the same address, and the
    matrix contradicts no explanation here.
 9. No secret in the tree, encrypted or not: secrets live in Vault and reach
    OpenTofu and Ansible from the environment. A root's `terraform.tfvars` is

@@ -299,6 +299,43 @@ module "vms" {
   depends_on = [module.zone_bridge]
 }
 
+module "container_templates" {
+  source   = "../../modules/container-template"
+  for_each = var.container_templates
+
+  node_name          = each.value.node
+  datastore_id       = var.template_datastore
+  url                = each.value.url
+  checksum           = each.value.checksum
+  checksum_algorithm = each.value.checksum_algorithm
+}
+
+module "containers" {
+  source   = "../../modules/container"
+  for_each = var.containers
+
+  name             = each.key
+  node_name        = each.value.node
+  template_file_id = module.container_templates[each.value.template].file_id
+  datastore_id     = var.template_datastore
+
+  vnet         = each.value.vnet
+  mtu          = var.node_link.mtu
+  ipv4_address = "${each.value.ip}/${split("/", var.zones[each.value.vnet].cidr)[1]}"
+  ipv4_gateway = cidrhost(var.zones[each.value.vnet].cidr, 1)
+  dns_servers  = var.vm_dns_servers
+
+  cores        = each.value.cores
+  memory_mb    = each.value.memory_mb
+  disk_size_gb = each.value.disk_size_gb
+
+  ssh_public_keys = var.vm_admin_ssh_keys
+  tags            = [each.value.vnet]
+
+  # The bridges must exist before a container can attach to one.
+  depends_on = [module.zone_bridge]
+}
+
 module "cluster" {
   source = "../../modules/rke2-cluster"
 
@@ -349,12 +386,13 @@ module "zone_firewall" {
   enabled      = var.datacenter_firewall_enabled
   node_enabled = var.node_firewall_enabled
   zones        = { for vnet, z in var.zones : vnet => { alias = z.alias, cidr = z.cidr } }
-  # Sources are machine names in tfvars, VMs or cluster machines; the module
-  # takes their addresses.
+  # Sources are machine names in tfvars, VMs, cluster machines or containers;
+  # the module takes their addresses.
   transit = [for e in var.transit : merge(e, {
     sources = [for s in e.sources : merge(
       { for name, vm in var.vms : name => vm.ip },
       { for name, n in merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes) : name => n.ip },
+      { for name, c in var.containers : name => c.ip },
     )[s]]
   })]
   node_admin     = var.node_firewall
@@ -367,10 +405,17 @@ module "zone_firewall" {
       vnet  = vm.vnet
       mac   = module.vms[name].mac_address
     } },
+    { for name, c in var.containers : name => {
+      vm_id     = module.containers[name].vm_id
+      node      = c.node
+      vnet      = c.vnet
+      mac       = module.containers[name].mac_address
+      container = true
+    } },
     module.cluster.vms,
   )
 
-  depends_on = [module.vms, module.cluster]
+  depends_on = [module.vms, module.cluster, module.containers]
 }
 
 # The node's firewall was one resource per kind before it ran on every node.
@@ -401,6 +446,7 @@ module "backup" {
   vm_ids = concat(
     [for name, vm in module.vms : vm.vm_id],
     [for name, vm in module.cluster.vms : vm.vm_id],
+    [for name, c in module.containers : c.vm_id],
   )
   retention = var.backup.retention
 }

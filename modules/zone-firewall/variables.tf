@@ -22,13 +22,14 @@ variable "zones" {
 }
 
 variable "transit" {
-  description = "The transit matrix, validated by the root. Each entry becomes rules commented \"<from> -> <to>: <note>\". sources, when not empty, narrows the source from the whole from zone to those addresses."
+  description = "The transit matrix, validated by the root. Each entry becomes rules commented \"<from> -> <to>: <note>\". sources, when not empty, narrows the source from the whole from zone to those addresses; targets, when not empty, narrows the machines of the to zone the entry opens on, by name."
   type = list(object({
     from    = string
     to      = list(string)
     proto   = string
     ports   = list(string)
     sources = list(string)
+    targets = list(string)
     note    = string
   }))
 }
@@ -57,11 +58,12 @@ variable "node_enabled" {
 }
 
 variable "vms" {
-  description = "Every VM, with its VMID, node, VNet and NIC MAC. A new MAC means the VM was recreated."
+  description = "Every guest, VMs and containers, with its VMID, node, VNet and NIC MAC. A new MAC means the guest was recreated. A container gets the same options and rules, set on its container ID."
   type = map(object({
-    vm_id = number
-    node  = string
-    vnet  = string
-    mac   = string
+    vm_id     = number
+    node      = string
+    vnet      = string
+    mac       = string
+    container = optional(bool, false)
   }))
 }

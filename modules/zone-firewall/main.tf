@@ -14,11 +14,18 @@ locals {
         proto   = e.proto
         source  = local.source[i]
         dport   = local.dport[i]
+        targets = e.targets
         comment = e.note == "" ? "${e.from} -> ${z.alias}" : "${e.from} -> ${z.alias}: ${e.note}"
       } if contains(e.to, z.alias)
     ]
   }
-  groups = { for vnet, rules in local.rules : vnet => rules if length(rules) > 0 }
+  # An entry without targets opens on every machine of the zone, through the
+  # zone's group; one with targets, on those machines only, as rules of their own.
+  group_rules = { for vnet, rules in local.rules : vnet => [for r in rules : r if length(r.targets) == 0] }
+  groups      = { for vnet, rules in local.group_rules : vnet => rules if length(rules) > 0 }
+  targeted_rules = {
+    for name, m in var.vms : name => [for r in local.rules[m.vnet] : r if contains(r.targets, name)]
+  }
 
   node_ports = [
     for e in var.transit : (
@@ -120,7 +127,7 @@ resource "proxmox_virtual_environment_cluster_firewall_security_group" "main" {
   }
 }
 
-# Recreated with the VM, keyed on its MAC (README.md).
+# Recreated with the guest, keyed on its MAC (README.md).
 resource "terraform_data" "vm" {
   for_each = var.vms
   input    = each.value.mac
@@ -129,8 +136,9 @@ resource "terraform_data" "vm" {
 resource "proxmox_virtual_environment_firewall_options" "main" {
   for_each = var.vms
 
-  node_name = each.value.node
-  vm_id     = each.value.vm_id
+  node_name    = each.value.node
+  vm_id        = each.value.container ? null : each.value.vm_id
+  container_id = each.value.container ? each.value.vm_id : null
 
   enabled       = true
   input_policy  = "DROP"
@@ -143,14 +151,30 @@ resource "proxmox_virtual_environment_firewall_options" "main" {
 }
 
 resource "proxmox_virtual_environment_firewall_rules" "main" {
-  for_each = { for name, vm in var.vms : name => vm if contains(keys(local.groups), vm.vnet) }
+  for_each = { for name, vm in var.vms : name => vm if contains(keys(local.groups), vm.vnet) || length(local.targeted_rules[name]) > 0 }
 
-  node_name = each.value.node
-  vm_id     = each.value.vm_id
+  node_name    = each.value.node
+  vm_id        = each.value.container ? null : each.value.vm_id
+  container_id = each.value.container ? each.value.vm_id : null
 
-  rule {
-    security_group = proxmox_virtual_environment_cluster_firewall_security_group.main[each.value.vnet].name
-    comment        = "zone ${each.value.vnet}"
+  dynamic "rule" {
+    for_each = contains(keys(local.groups), each.value.vnet) ? [each.value.vnet] : []
+    content {
+      security_group = proxmox_virtual_environment_cluster_firewall_security_group.main[rule.value].name
+      comment        = "zone ${rule.value}"
+    }
+  }
+
+  dynamic "rule" {
+    for_each = local.targeted_rules[each.key]
+    content {
+      type    = "in"
+      action  = "ACCEPT"
+      proto   = rule.value.proto
+      source  = rule.value.source
+      dport   = rule.value.dport == "" ? null : rule.value.dport
+      comment = rule.value.comment
+    }
   }
 
   lifecycle {

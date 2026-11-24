@@ -126,6 +126,31 @@ vms = {
   }
 }
 
+# Proxmox's own template, pinned to its build and the sha512 it publishes
+# (`pveam available --section system`), downloaded onto the node its
+# containers run on.
+container_templates = {
+  "debian-13-standard" = {
+    node     = "pve-2"
+    url      = "https://download.proxmox.com/images/system/debian-13-standard_13.6-1_amd64.tar.zst"
+    checksum = "4c0c27ca6ceab5ef0b84db57825a00f26157ef1854bafe97297813e1cbe8ecb8cc9c453cab6b3b0efe1ba193a50c47ece1e41d950e411b8730b835b71e9e754b"
+  }
+}
+
+# The LXC containers, beside the VMs. The addressing plan is in docs/zones.md.
+containers = {
+  # The base services of the estate (workspace#285): Traefik and RustFS.
+  "ct-base-01" = {
+    node         = "pve-2"
+    template     = "debian-13-standard"
+    vnet         = "ci"
+    ip           = "10.10.1.30"
+    cores        = 1
+    memory_mb    = 1024
+    disk_size_gb = 8
+  }
+}
+
 # Enforces every VM's firewall. Needs Docker on the node with
 # `ip-forward-no-drop` (docs/architecture.md, The node).
 datacenter_firewall_enabled = true
@@ -184,6 +209,8 @@ transit = [
   { from = "ci", to = ["mgmt"], ports = [22], sources = ["vm-ci-01", "vm-ci-02"], note = "the pipeline's playbooks, from the CI VMs only" },
   { from = "ci", to = ["ci"], ports = [22], sources = ["vm-ci-01", "vm-ci-02"], note = "the pipeline's playbooks, between the CI VMs" },
   { from = "ci", to = ["node"], ports = [443, 8006], note = "Proxmox API and RustFS, through Traefik on 443. NEVER 22 towards the node from ci" },
+  { from = "mgmt", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "Traefik in ct-base-01 (Proxmox UI, PBS, RustFS), over WARP" },
+  { from = "ci", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "the runners towards RustFS and the Proxmox API, through Traefik in ct-base-01" },
   { from = "platform", to = ["platform"], ports = ["2379-2381", 6443, 9099, 9345, 10250, 10257, 10259, "30000-32767"], note = "the cluster: etcd and its metrics, API, Canal health, supervisor, kubelet, controller-manager and scheduler metrics, NodePorts; the LB towards the nodes" },
   { from = "platform", to = ["platform"], proto = "udp", ports = [8472], note = "Canal VXLAN between the cluster nodes" },
   { from = "platform", to = ["platform"], proto = "vrrp", ports = [], note = "keepalived between the two LB VMs" },
@@ -192,13 +219,14 @@ transit = [
   { from = "platform", to = ["internet"], ports = [443], note = "egress, alerts to the phone among it" },
   { from = "internet", to = ["node"], ports = [22], note = "break-glass SSH, key-only; the Hetzner firewall keeps it closed until opened" },
   { from = "nodes", to = ["node"], ports = [8007], note = "PBS on pve-1's host, for the guests of the other nodes" },
+  { from = "ci", to = ["node"], ports = [8007], sources = ["ct-base-01"], note = "Traefik in ct-base-01 towards PBS on the host" },
 ]
 
 # From the admin zones the node admits only these ports, whatever an entry
 # opens.
 node_firewall = {
   admin_zones = ["mgmt", "ci"]
-  admin_ports = [22, 443, 8006]
+  admin_ports = [22, 443, 8006, 8007]
 }
 
 # Every VM, to PBS on the Storage Box (operator decision, 2026-09-29).
