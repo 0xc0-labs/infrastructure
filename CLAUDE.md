@@ -10,9 +10,9 @@ bridge over its Hetzner vSwitch on both nodes, not SDN. `pve-2` is router and
 firewall and holds `.1` in every zone; `eno1` keeps the public IP, and egress
 is SNAT through `eno1`. `pve-1`'s bridges are layer 2 only.
 
-`pve-2`'s host also runs PBS, and `pve-1` has a stopped Docker. They are **not
-managed from this repo** and must never be touched by it: PBS backs up to a
-Hetzner Storage Box. Traefik,
+`pve-2`'s host also runs PBS, and `pve-1` has Docker, its containers stopped.
+They are **not managed from this repo** and must never be touched by it: PBS
+backs up to a Hetzner Storage Box. Traefik,
 the reverse proxy for the Proxmox UI, PBS and RustFS, and RustFS, which holds
 the OpenTofu state, run in `ct-base-01` and are managed here: OpenTofu makes
 the container, Ansible configures what is inside it. Any change here that could

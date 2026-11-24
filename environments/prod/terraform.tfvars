@@ -152,8 +152,9 @@ containers = {
   }
 }
 
-# Enforces every VM's firewall. Needs the routing node's FORWARD policy at
-# ACCEPT, its default where there is no Docker (docs/architecture.md, The node).
+# Enforces every VM's firewall. Needs the FORWARD policy at ACCEPT on every node
+# that hosts guests: pve-2 by default (no Docker), pve-1 through Docker's
+# ip-forward-no-drop (docs/architecture.md, The node).
 datacenter_firewall_enabled = true
 
 # The Hetzner Rescue system is the way back in.

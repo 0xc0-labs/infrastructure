@@ -98,15 +98,23 @@ flowchart TB
   and, for the zone, the SNAT and the conntrack zone rule (`zones.md`, Zones).
   The provider's resources keep those lines when they rewrite the file. On
   `pve-1` the bridges are `inet manual`, with the conntrack zone rule alone.
-- **Docker** is on `pve-1` only, stopped: Traefik and RustFS moved to
-  `ct-base-01`, and Docker goes when `pve-1` is reinstalled. `pve-2` has none.
-  The zone firewall needs the routing node's `FORWARD` policy at ACCEPT. The
+- **Docker** is on `pve-1` only: Traefik and RustFS moved to `ct-base-01`, so
+  its containers are stopped, but its daemon runs, and Docker goes when
+  `pve-1` is reinstalled. `pve-2` has none.
+  The zone firewall needs the `FORWARD` policy at ACCEPT on every node that
+  hosts guests, not only the routing one: a guest's traffic crosses its
+  firewall bridge on the node it runs on, through that node's `FORWARD` chain
+  (`net.bridge.bridge-nf-call-iptables = 1`). Today that is `pve-1`, which
+  hosts every guest but `ct-base-01`. The
   Proxmox firewall explicitly accepts only traffic *into* a VM. It leaves
   traffic *out of* a VM, and the hop across a zone bridge, to that policy, so
   a DROP takes every VM's egress and its peers (tested in
   [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). Docker sets
-  DROP unless `/etc/docker/daemon.json` has `{"ip-forward-no-drop": true}`;
-  `pve-2`, with no Docker, has ACCEPT by default.
+  DROP unless `/etc/docker/daemon.json` has `{"ip-forward-no-drop": true}`:
+  `pve-1`'s daemon runs with it, and it stays until the reinstall, or a
+  restart of `dockerd` would cut the egress and the peers of every guest on
+  `pve-1`. `pve-2`, with no Docker, has ACCEPT by default. Being the routing
+  node adds only forwarding (`ip_forward`) on top of that.
 - **Forwarding**, also by hand, on a node that routes for the zones. Only the
   zones' bridges forward by themselves; the replies come in
   through `eno1`, whose forwarding follows `net.ipv4.ip_forward`, and no file
