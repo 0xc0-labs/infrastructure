@@ -66,3 +66,4 @@
     owner: root
     group: root
     mode: "0600"
+  notify: Roll canal

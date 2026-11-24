@@ -9,3 +9,63 @@
     name: rke2-server
     state: restarted
   when: not rke2_server_pending
+
+# The chart writes the MTU into a config map only; each canal pod copies it to
+# the node's CNI file when it starts, and nothing restarts the pods when the
+# chart changes. Stamping the value on the pod template rolls the DaemonSet
+# once for the cluster: the servers after the first find it already stamped,
+# and the patch changes nothing.
+- name: Wait for RKE2 to apply the new MTU
+  listen: Roll canal
+  when: not rke2_server_pending
+  ansible.builtin.command:
+    argv:
+      - "{{ rke2_server_kubectl }}"
+      - -n
+      - kube-system
+      - get
+      - cm
+      - rke2-canal-config
+      - -o
+      - jsonpath={.data.veth_mtu}
+  environment:
+    KUBECONFIG: "{{ rke2_server_kubeconfig }}"
+  register: rke2_server_canal_cm
+  until: rke2_server_canal_cm.stdout == rke2_server_canal_veth_mtu | string
+  retries: 60
+  delay: 5
+  changed_when: false
+
+- name: Stamp the MTU on canal's pod template
+  listen: Roll canal
+  when: not rke2_server_pending
+  ansible.builtin.command:
+    argv:
+      - "{{ rke2_server_kubectl }}"
+      - -n
+      - kube-system
+      - patch
+      - ds/rke2-canal
+      - --type=merge
+      - -p
+      - '{"spec":{"template":{"metadata":{"annotations":{"0xc0.cc/veth-mtu":"{{ rke2_server_canal_veth_mtu }}"}}}}}'
+  environment:
+    KUBECONFIG: "{{ rke2_server_kubeconfig }}"
+  register: rke2_server_canal_patch
+  changed_when: "'no change' not in rke2_server_canal_patch.stdout"
+
+- name: Wait for canal's rollout
+  listen: Roll canal
+  when: not rke2_server_pending
+  ansible.builtin.command:
+    argv:
+      - "{{ rke2_server_kubectl }}"
+      - -n
+      - kube-system
+      - rollout
+      - status
+      - ds/rke2-canal
+      - --timeout=10m
+  environment:
+    KUBECONFIG: "{{ rke2_server_kubeconfig }}"
+  changed_when: false
