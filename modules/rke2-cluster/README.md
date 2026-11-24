@@ -41,11 +41,12 @@ No resources.
 | <a name="input_datastore_id"></a> [datastore\_id](#input\_datastore\_id) | Datastore for the disks and the cloud-init drives. | `string` | n/a | yes |
 | <a name="input_dns_servers"></a> [dns\_servers](#input\_dns\_servers) | Resolvers written by cloud-init. | `list(string)` | n/a | yes |
 | <a name="input_load_balancers"></a> [load\_balancers](#input\_load\_balancers) | The HAProxy + keepalived pair: the template to clone, the size, and each VM's address. | <pre>object({<br/>    template_vm_id = number<br/>    cores          = number<br/>    memory_mb      = number<br/>    disk_size_gb   = number<br/>    nodes = map(object({<br/>      ip      = string<br/>      rebuild = number<br/>    }))<br/>  })</pre> | n/a | yes |
+| <a name="input_mtu"></a> [mtu](#input\_mtu) | Every VM's NIC MTU, which the guest takes as its maximum when the VM starts. A vSwitch carries 1400 at most, so no guest may be wider than that. | `number` | n/a | yes |
 | <a name="input_node_name"></a> [node\_name](#input\_node\_name) | Proxmox node. | `string` | n/a | yes |
 | <a name="input_servers"></a> [servers](#input\_servers) | The RKE2 servers — control plane, etcd and workloads together: the template, the size, the data disks, and each VM's address. | <pre>object({<br/>    template_vm_id = number<br/>    cpu_type       = string<br/>    cores          = number<br/>    memory_mb      = number<br/>    disk_size_gb   = number<br/>    data_disks_gb  = list(number)<br/>    nodes = map(object({<br/>      ip      = string<br/>      rebuild = number<br/>    }))<br/>  })</pre> | n/a | yes |
 | <a name="input_ssh_public_keys"></a> [ssh\_public\_keys](#input\_ssh\_public\_keys) | Public keys authorised for username. | `list(string)` | n/a | yes |
 | <a name="input_username"></a> [username](#input\_username) | Admin user created by cloud-init; SSH keys only, no password. | `string` | n/a | yes |
-| <a name="input_vnet"></a> [vnet](#input\_vnet) | SDN VNet the whole cluster attaches to — its zone. | `string` | n/a | yes |
+| <a name="input_vnet"></a> [vnet](#input\_vnet) | Bridge the whole cluster attaches to — its zone. | `string` | n/a | yes |
 
 ## Outputs
 

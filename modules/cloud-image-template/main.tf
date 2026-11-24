@@ -59,6 +59,7 @@ resource "proxmox_virtual_environment_vm" "main" {
   network_device {
     bridge = var.bridge
     model  = "virtio"
+    mtu    = var.mtu
   }
 
   # Debian and Ubuntu cloud images log to the serial console.

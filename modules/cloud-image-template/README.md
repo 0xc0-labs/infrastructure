@@ -56,6 +56,7 @@ No modules.
 | <a name="input_image_checksum"></a> [image\_checksum](#input\_image\_checksum) | Checksum of the image, as published by the distribution, in image\_checksum\_algorithm. | `string` | n/a | yes |
 | <a name="input_image_checksum_algorithm"></a> [image\_checksum\_algorithm](#input\_image\_checksum\_algorithm) | Algorithm of image\_checksum: sha512 (Debian) or sha256 (Rocky publishes only this one). | `string` | `"sha512"` | no |
 | <a name="input_image_url"></a> [image\_url](#input\_image\_url) | URL of an uncompressed cloud image (qcow2). Pin a dated build, never a 'latest' link. | `string` | n/a | yes |
+| <a name="input_mtu"></a> [mtu](#input\_mtu) | The NIC's MTU, which the guest takes as its maximum when the VM starts. A vSwitch carries 1400 at most, so no guest may be wider than that. | `number` | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Template name in Proxmox. | `string` | n/a | yes |
 | <a name="input_node_name"></a> [node\_name](#input\_node\_name) | Proxmox node that holds the template. | `string` | n/a | yes |
 | <a name="input_vm_id"></a> [vm\_id](#input\_vm\_id) | Fixed VMID of the template. Raw images take 9000-9099; Packer's templates 9100-9149, and each one's next build that ID plus 50. | `number` | n/a | yes |

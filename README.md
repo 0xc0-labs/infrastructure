@@ -1,6 +1,6 @@
 # infrastructure
 
-OpenTofu, Packer and Ansible for the 0xc0-labs node: its SDN zones, its
+OpenTofu, Packer and Ansible for the 0xc0-labs node: its zones, its
 firewall, the VMs on it, and the RKE2 cluster they run.
 
 - **How it fits together:** [`docs/architecture.md`](docs/architecture.md)
@@ -284,6 +284,26 @@ reboot does not stop a join.
 
    Seen: `pvesm status` shows `sbox` active on both nodes. The daily job,
    which names no node, then backs up each node's guests to it.
+
+10. **The zones' bridges** come with the node's entry in `nodes`: the root
+    makes, on every node of `nodes`, the VLAN interface of each zone and the
+    bridge named as the zone over it (`modules/zone-bridge`), at MTU 1400. A
+    new node gets them by entering `nodes`, layer 2 only, with no address.
+    It routes for a zone only with an entry in `zone_gateways`, given with
+    its first guest.
+
+## Changing a guest's NIC
+
+A NIC setting, such as the `mtu` every VM and template carries, is read when
+the VM's process starts: it takes effect at a stop and start from Proxmox,
+not at a reboot from inside the guest. Changing it on a running VM makes
+Proxmox unplug the NIC and plug it again, and an apply would do that to every
+VM at once, so a change that needs it is made by hand, one guest at a time,
+before the PR that declares it: shut the guest down, edit its `net0`, start it,
+check it from inside. **Never on a running RKE2 node**: the pod network's tunnel
+sits on that NIC and goes with it. Take them one at a time, with the node Ready
+(`flannel.1` at the new size), Vault's pod unsealed on it and Longhorn's volumes
+healthy before the next. The PR's plan then shows nothing to change.
 
 ## gVisor on vm-rke2-04
 

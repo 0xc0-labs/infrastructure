@@ -65,6 +65,7 @@ resource "proxmox_virtual_environment_vm" "main" {
     bridge   = var.vnet
     model    = "virtio"
     firewall = true
+    mtu      = var.mtu
   }
 
   serial_device {}

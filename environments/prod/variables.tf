@@ -3,16 +3,6 @@ variable "nodes" {
   type        = list(string)
 }
 
-variable "sdn_nodes" {
-  description = "The nodes the SDN zone and its VNets live on, a subset of `nodes`: only pve-1 holds the zones' gateway and SNAT until the zones ride the vSwitches."
-  type        = list(string)
-
-  validation {
-    condition     = alltrue([for n in var.sdn_nodes : contains(var.nodes, n)])
-    error_message = "Every sdn_nodes entry must be in `nodes`."
-  }
-}
-
 variable "node_link" {
   description = "The link between the nodes: the vSwitch `cluster` (docs/zones.md, vSwitches)."
   type = object({
@@ -55,18 +45,24 @@ variable "node_links" {
   }
 }
 
-variable "sdn_zone_id" {
-  description = "ID of the SDN Simple zone holding every zone."
-  type        = string
-}
-
 variable "zones" {
-  description = "The zones, keyed by VNet ID. docs/zones.md explains them."
+  description = "The zones, keyed by bridge name: letters and digits, up to 8 characters. Each is a vSwitch, carried as `vlan`. docs/zones.md explains them."
   type = map(object({
     alias = string
     cidr  = string
     snat  = bool
+    vlan  = number
   }))
+
+  validation {
+    condition     = alltrue([for z in values(var.zones) : z.vlan >= 4000 && z.vlan <= 4091])
+    error_message = "Every zone's vlan: between 4000 and 4091, the range of Hetzner's vSwitches."
+  }
+
+  validation {
+    condition     = length(distinct(concat([var.node_link.vlan], [for z in values(var.zones) : z.vlan]))) == length(var.zones) + 1
+    error_message = "No two zones may share a vlan, and none may be node_link's."
+  }
 
   # So that no zone lands on a reserved range (docs/zones.md).
   validation {
@@ -80,6 +76,35 @@ variable "zones" {
   validation {
     condition     = alltrue([for id, z in var.zones : !(z.alias == "data" && z.snat)])
     error_message = "The data zone must not have SNAT: it initiates no connection."
+  }
+}
+
+variable "zone_gateways" {
+  description = "Each node's address in each zone it routes for, keyed by node then zone: the node holds it on the zone's bridge. A node with no entry has the bridges at layer 2 only."
+  type        = map(map(string))
+
+  validation {
+    condition     = alltrue([for n in keys(var.zone_gateways) : contains(var.nodes, n)])
+    error_message = "Every zone_gateways node must be in `nodes`."
+  }
+
+  validation {
+    condition     = alltrue([for g in values(var.zone_gateways) : alltrue([for z in keys(g) : contains(keys(var.zones), z)])])
+    error_message = "Every zone_gateways zone must be in `zones`."
+  }
+
+  validation {
+    condition = alltrue([
+      for g in values(var.zone_gateways) : alltrue([
+        for z, ip in g : cidrcontains(var.zones[z].cidr, ip)
+      ])
+    ])
+    error_message = "Every zone_gateways address must sit inside its zone."
+  }
+
+  validation {
+    condition     = length(distinct(flatten([for g in values(var.zone_gateways) : values(g)]))) == length(flatten([for g in values(var.zone_gateways) : values(g)]))
+    error_message = "No two zone_gateways entries may share an address."
   }
 }
 
@@ -186,9 +211,9 @@ variable "vms" {
       for v in values(var.vms) :
       contains(keys(var.zones), v.vnet)
       && cidrhost("${v.ip}/${split("/", var.zones[v.vnet].cidr)[1]}", 0) == cidrhost(var.zones[v.vnet].cidr, 0)
-      && v.ip != cidrhost(var.zones[v.vnet].cidr, 1)
+      && !contains(flatten([for g in values(var.zone_gateways) : values(g)]), v.ip)
     ])
-    error_message = "Every VM's ip must be inside its vnet's zone and must not be the host's .1 — see docs/zones.md."
+    error_message = "Every VM's ip must be inside its vnet's zone and must not be a node's zone_gateways address — see docs/zones.md."
   }
 
   validation {
@@ -329,9 +354,9 @@ variable "cluster" {
     condition = contains(keys(var.zones), var.cluster.vnet) && alltrue([
       for ip in concat([var.cluster.vip, var.cluster.internal_vip], [for n in merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes) : n.ip]) :
       cidrhost("${ip}/${split("/", var.zones[var.cluster.vnet].cidr)[1]}", 0) == cidrhost(var.zones[var.cluster.vnet].cidr, 0)
-      && ip != cidrhost(var.zones[var.cluster.vnet].cidr, 1)
+      && !contains(flatten([for g in values(var.zone_gateways) : values(g)]), ip)
     ])
-    error_message = "The cluster's vips and every address must be inside its vnet's zone and must not be the host's .1 — see docs/zones.md."
+    error_message = "The cluster's vips and every address must be inside its vnet's zone and must not be a node's zone_gateways address — see docs/zones.md."
   }
 
   validation {

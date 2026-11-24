@@ -9,8 +9,18 @@ variable "datastore_id" {
 }
 
 variable "vnet" {
-  description = "SDN VNet the whole cluster attaches to — its zone."
+  description = "Bridge the whole cluster attaches to — its zone."
   type        = string
+}
+
+variable "mtu" {
+  description = "Every VM's NIC MTU, which the guest takes as its maximum when the VM starts. A vSwitch carries 1400 at most, so no guest may be wider than that."
+  type        = number
+
+  validation {
+    condition     = var.mtu >= 576 && var.mtu <= 1400
+    error_message = "mtu: between 576 and 1400, what a vSwitch carries."
+  }
 }
 
 variable "cidr" {
