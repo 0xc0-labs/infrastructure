@@ -66,6 +66,20 @@ flowchart TB
   [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). On a
   reinstalled node, write that file, restart Docker and run
   `iptables -P FORWARD ACCEPT` **before** the first apply.
+- **Forwarding**, also by hand, on a node that routes for the zones. The SDN
+  writes `ip-forward on` only on each VNet's bridge; the replies come in
+  through `eno1`, whose forwarding follows `net.ipv4.ip_forward`, and no file
+  sets it (Hetzner's `99-hetzner.conf` has it commented out). Without it a
+  guest has its gateway and no internet. `/etc/sysctl.d/90-ip-forward.conf`:
+
+  ```
+  net.ipv4.ip_forward = 1
+  ```
+
+  On `pve-1` Docker has kept it at 1 since it started, switching it on itself;
+  a node with no Docker, `pve-2`, has nothing that does, which a test guest
+  showed on 2026-11-24. The provider cannot write the file and Ansible here
+  configures VMs, not nodes.
 - **`eno1`'s offloads**, also by hand: TCP and generic segmentation offload
   are off, with `post-up /usr/sbin/ethtool -K eno1 tso off gso off` in the
   `iface eno1 inet static` stanza of `/etc/network/interfaces`. The I219-LM
@@ -94,8 +108,9 @@ Some of these bullets hold only for `pve-1`, each for its own reason. The base
 services and Docker, because `pve-1` runs Docker, PBS, Traefik and RustFS: they
 do not apply to a node installed without them, as in the README's
 [Adding a node](../README.md#adding-a-node). Disks, because of its RAID level:
-`pve-1` is RAID 0, and `pve-2` is RAID 1. The offloads and Hetzner's firewall
-do apply to every node, and are set by hand there.
+`pve-1` is RAID 0, and `pve-2` is RAID 1. The forwarding, the offloads and Hetzner's
+firewall do apply to every node that routes for the zones, and are set by hand
+there.
 
 ## Templates
 

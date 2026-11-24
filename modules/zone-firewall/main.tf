@@ -51,6 +51,24 @@ resource "proxmox_virtual_environment_firewall_alias" "local_network" {
   comment = "Overrides the detected network: no implicit admin access"
 }
 
+# Proxmox's built-in `management` set admits its members to a node's 22, 8006,
+# 3128, 5900-5999 and 60000-60050: what the nodes of a cluster need from each
+# other. A set and not node rules: a node's rules are its own and a joining node
+# has none, so OpenTofu could not write them, while the datacenter's
+# configuration is shared the moment it joins (docs/zones.md, Invariants).
+resource "proxmox_virtual_environment_firewall_ipset" "management" {
+  name    = "management"
+  comment = "The nodes, on the link between them"
+
+  dynamic "cidr" {
+    for_each = var.node_links
+    content {
+      name    = cidr.value
+      comment = cidr.key
+    }
+  }
+}
+
 resource "proxmox_virtual_environment_firewall_rules" "node" {
   node_name = var.node_name
 

@@ -18,6 +18,11 @@ the module computes every rule from it, and none is written by hand.
   its `admin_ports`, from elsewhere the entry's ports. Its DROP is switched on
   only after its rules exist. `local_network` points at loopback, so Proxmox
   grants no implicit admin access to the network it detects.
+- The datacenter's **`management` IPSet** holds the nodes' addresses on the
+  link between them (`node_links`), each commented with its node's name:
+  Proxmox admits its members to what a cluster needs. A set and not node
+  rules, because a joining node has no rules of its own (`docs/zones.md`,
+  Invariants, 6).
 - `enabled` is the **datacenter master switch**; `node_enabled`, the node's.
   With the first off, nothing is enforced.
 
@@ -57,6 +62,7 @@ No modules.
 | [proxmox_virtual_environment_cluster_firewall.main](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_cluster_firewall) | resource |
 | [proxmox_virtual_environment_cluster_firewall_security_group.main](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_cluster_firewall_security_group) | resource |
 | [proxmox_virtual_environment_firewall_alias.local_network](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_firewall_alias) | resource |
+| [proxmox_virtual_environment_firewall_ipset.management](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_firewall_ipset) | resource |
 | [proxmox_virtual_environment_firewall_options.main](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_firewall_options) | resource |
 | [proxmox_virtual_environment_firewall_rules.main](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_firewall_rules) | resource |
 | [proxmox_virtual_environment_firewall_rules.node](https://registry.terraform.io/providers/bpg/proxmox/0.114.0/docs/resources/virtual_environment_firewall_rules) | resource |
@@ -69,6 +75,7 @@ No modules.
 | <a name="input_enabled"></a> [enabled](#input\_enabled) | The datacenter firewall's master switch. Nothing below is enforced while it is false. | `bool` | n/a | yes |
 | <a name="input_node_admin"></a> [node\_admin](#input\_node\_admin) | From admin\_zones the node admits only admin\_ports; from anywhere else, an entry's ports as written. | <pre>object({<br/>    admin_zones = list(string)<br/>    admin_ports = list(string)<br/>  })</pre> | n/a | yes |
 | <a name="input_node_enabled"></a> [node\_enabled](#input\_node\_enabled) | The node's own firewall: DROP on everything but its rules. Needs `enabled` too. | `bool` | n/a | yes |
+| <a name="input_node_links"></a> [node\_links](#input\_node\_links) | Every node's address on the link between the nodes, keyed by node name, a node of `nodes` or not. They become the datacenter's `management` set. | `map(string)` | n/a | yes |
 | <a name="input_node_name"></a> [node\_name](#input\_node\_name) | Proxmox node. | `string` | n/a | yes |
 | <a name="input_transit"></a> [transit](#input\_transit) | The transit matrix, validated by the root. Each entry becomes rules commented "<from> -> <to>: <note>". sources, when not empty, narrows the source from the whole from zone to those addresses. | <pre>list(object({<br/>    from    = string<br/>    to      = list(string)<br/>    proto   = string<br/>    ports   = list(string)<br/>    sources = list(string)<br/>    note    = string<br/>  }))</pre> | n/a | yes |
 | <a name="input_vms"></a> [vms](#input\_vms) | Every VM, with its VMID, VNet and NIC MAC. A new MAC means the VM was recreated. | <pre>map(object({<br/>    vm_id = number<br/>    vnet  = string<br/>    mac   = string<br/>  }))</pre> | n/a | yes |
