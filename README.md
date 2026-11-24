@@ -1,6 +1,6 @@
 # infrastructure
 
-OpenTofu, Packer and Ansible for the 0xc0-labs node: its SDN zones, its
+OpenTofu, Packer and Ansible for the 0xc0-labs node: its zones, its
 firewall, the VMs on it, and the RKE2 cluster they run.
 
 - **How it fits together:** [`docs/architecture.md`](docs/architecture.md)
@@ -284,6 +284,13 @@ reboot does not stop a join.
 
    Seen: `pvesm status` shows `sbox` active on both nodes. The daily job,
    which names no node, then backs up each node's guests to it.
+
+10. **The zones' bridges** come with the node's entry in `nodes`: the root
+    makes, on every node of `nodes`, the VLAN interface of each zone and the
+    bridge named as the zone over it (`modules/zone-bridge`), at MTU 1400. A
+    new node gets them by entering `nodes`, layer 2 only, with no address.
+    It routes for a zone only with an entry in `zone_gateways`, given with
+    its first guest.
 
 ## gVisor on vm-rke2-04
 

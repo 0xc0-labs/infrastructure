@@ -60,7 +60,7 @@ No modules.
 | <a name="input_tags"></a> [tags](#input\_tags) | Proxmox tags. | `list(string)` | `[]` | no |
 | <a name="input_template_vm_id"></a> [template\_vm\_id](#input\_template\_vm\_id) | VMID of the template to clone. | `number` | n/a | yes |
 | <a name="input_username"></a> [username](#input\_username) | Admin user created by cloud-init; SSH keys only, no password. | `string` | n/a | yes |
-| <a name="input_vnet"></a> [vnet](#input\_vnet) | SDN VNet the VM attaches to — its zone. | `string` | n/a | yes |
+| <a name="input_vnet"></a> [vnet](#input\_vnet) | Bridge the VM attaches to — its zone. | `string` | n/a | yes |
 
 ## Outputs
 

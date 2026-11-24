@@ -9,16 +9,43 @@ addressing plan, and the invariants.
 
 ## Zones
 
-Each zone is a VNet in one Proxmox SDN Simple zone (`homelab`), with a subnet
-whose gateway is the host (`.1`) and SNAT for egress through `eno1`. They are
-the `zones` map in `terraform.tfvars`, keyed by VNet ID (at most 8 letters and
-digits); `alias` is the name everything else uses.
+Each zone is a plain Linux bridge over its Hetzner vSwitch on every node
+(`modules/zone-bridge`): the VLAN interface `eno1.<vlan>` is the bridge's only
+port, both at MTU 1400, and every guest's NIC names the bridge. The gateway is
+`.1`, held by `pve-1` alone (`zone_gateways`), which also does the SNAT for
+egress through `eno1`. A node with no entry in `zone_gateways`, `pve-2` today,
+has the bridge at layer 2 only, and its guests' gateway is `pve-1`'s `.1`
+across the vSwitch. The zones are the `zones` map in `terraform.tfvars`, keyed
+by bridge name (at most 8 letters and digits); `alias` is the name everything
+else uses.
 
-| Zone | CIDR | VNet |
-|---|---|---|
-| `mgmt` | 10.10.0.0/24 | `mgmt` |
-| `ci` | 10.10.1.0/24 | `ci` |
-| `platform` | 10.10.4.0/24 | `platform` |
+| Zone | CIDR | Bridge | VLAN |
+|---|---|---|---|
+| `mgmt` | 10.10.0.0/24 | `mgmt` | 4001 |
+| `ci` | 10.10.1.0/24 | `ci` | 4002 |
+| `platform` | 10.10.4.0/24 | `platform` | 4003 |
+
+The SNAT is four lines in `pve-1`'s bridge stanza of
+`/etc/network/interfaces`, written by hand: the provider's bridge resource has
+no free line, and the API keeps hand-written lines when it rewrites a stanza.
+For `platform`:
+
+```
+auto platform
+iface platform inet static
+	address 10.10.4.1/24
+	bridge-ports eno1.4003
+	bridge-stp off
+	bridge-fd 0
+	mtu 1400
+	post-up iptables -t nat -A POSTROUTING -s '10.10.4.0/24' -o eno1 -j SNAT --to-source <pve-1's public address>
+	post-down iptables -t nat -D POSTROUTING -s '10.10.4.0/24' -o eno1 -j SNAT --to-source <pve-1's public address>
+	post-up iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
+	post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
+```
+
+Each reload runs the `post-up` lines again and adds an identical rule; a
+reboot starts from one each. That is left so.
 
 `mgmt` and `ci` together, `10.10.0.0/22`, are the control zones: the only ones
 that reach the node's admin ports. `platform` holds the RKE2 cluster and the
@@ -53,15 +80,13 @@ admits VLANs 4000 to 4091, 5 vSwitches a server and an MTU of 1400 at most.
 | `ci` | 4002 | the `ci` zone, `10.10.1.0/24` |
 | `platform` | 4003 | the `platform` zone, `10.10.4.0/24` |
 
-They are created and attached. `cluster` is the only one in use: each node
-holds its address on it (`node_links` in
-`environments/prod/terraform.tfvars`, the interface `eno1.4000` with MTU
-1400): `pve-1` holds `10.20.0.1` and `pve-2` `10.20.0.2`.
+They are created and attached. On `cluster` each node holds its address
+(`node_links` in `environments/prod/terraform.tfvars`, the interface `eno1.4000`
+with MTU 1400): `pve-1` holds `10.20.0.1` and `pve-2` `10.20.0.2`.
 `modules/node-link` makes the interface for every node of `nodes`; `pve-2`'s was
 made through the API during the rehearsal and was imported into the state when
-it entered `nodes` (#277). **The zones do not ride the other three yet**. Today
-every zone is still the SDN VNet described above, on `pve-1` alone
-(`sdn_nodes`). Hetzner's firewall filters the vSwitches too
+it entered `nodes` (#277). The other three carry the zones, as bridges
+(Zones, above), on both nodes. Hetzner's firewall filters the vSwitches too
 ([`architecture.md`](architecture.md#the-node)).
 
 ## Machines

@@ -25,7 +25,7 @@ variable "datastore_id" {
 }
 
 variable "vnet" {
-  description = "SDN VNet the VM attaches to — its zone."
+  description = "Bridge the VM attaches to — its zone."
   type        = string
 }
 
