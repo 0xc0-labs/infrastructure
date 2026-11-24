@@ -271,10 +271,19 @@ reboot does not stop a join.
    rules, and `pve-2`'s SSH answers again on its public address.
 
 9. **Point the PBS storage at the link**, once the apply of the PR that admits
-   8007 from the nodes' link has run (`storage.cfg` is the cluster's):
-   `pvesm set sbox --server 10.20.0.1 --delete nodes`. Seen: `pvesm status`
-   shows `sbox` active on both nodes. The daily job, which names no node, then
-   backs up each node's guests to it.
+   8007 from the nodes' link has run (before it, another node does not reach
+   PBS). `server` is a fixed parameter of a PBS storage, so `pvesm set`
+   refuses to change it. Edit the `server` line of `pbs: sbox` in
+   `/etc/pve/storage.cfg`, the cluster's file, then drop the node restriction:
+
+   ```
+   sed -i -E 's/^([[:space:]]+server) 127\.0\.0\.1$/\1 10.20.0.1/' /etc/pve/storage.cfg
+   pvesm set sbox --delete nodes
+   pvesm status
+   ```
+
+   Seen: `pvesm status` shows `sbox` active on both nodes. The daily job,
+   which names no node, then backs up each node's guests to it.
 
 ## gVisor on vm-rke2-04
 
