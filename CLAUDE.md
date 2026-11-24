@@ -3,13 +3,16 @@
 The workspace's `CLAUDE.md` holds the org's rules, which apply here too; this
 file holds only this repo's.
 
-Proxmox VE 9 on a Hetzner dedicated server (`pve-1`, `pve.0xc0.cc`), 2× NVMe
-in mdadm RAID 0, no ZFS. A single node. The host is router and
-firewall and holds `.1` in every zone; `eno1` keeps the public IP, each zone
-is an SDN VNet with no physical port, and egress is SNAT through `eno1`.
+Proxmox VE 9 on two Hetzner dedicated servers, `pve-1` (`pve.0xc0.cc`) and
+`pve-2`, one cluster, no ZFS. `pve-1` has 2× NVMe in mdadm RAID 0, to be
+reinstalled with RAID 1; `pve-2` has 2× NVMe in RAID 1. Each zone is a Linux
+bridge over its Hetzner vSwitch on both nodes, not SDN. `pve-2` is router and
+firewall and holds `.1` in every zone; `eno1` keeps the public IP, and egress
+is SNAT through `eno1`. `pve-1`'s bridges are layer 2 only.
 
-The host also runs PBS and Docker. They are **not managed from this repo** and
-must never be touched by it: PBS backs up to a Hetzner Storage Box. Traefik,
+`pve-2`'s host also runs PBS, and `pve-1` has Docker, its containers stopped.
+They are **not managed from this repo** and must never be touched by it: PBS
+backs up to a Hetzner Storage Box. Traefik,
 the reverse proxy for the Proxmox UI, PBS and RustFS, and RustFS, which holds
 the OpenTofu state, run in `ct-base-01` and are managed here: OpenTofu makes
 the container, Ansible configures what is inside it. Any change here that could
@@ -20,11 +23,11 @@ OpenTofu (the official cloud image as a raw template, VMs, network, firewall)
 → Packer (the templates VMs clone: `debian-13-base`, `rocky-10-base`, and the
 ones built on them)
 → Ansible (configuration). No VM clones the raw image.
-Proxmox provider: `bpg/proxmox`. Zones are Proxmox SDN: one Simple zone, a
-VNet and a subnet per zone, with the host as gateway and SNAT for egress, all
-in OpenTofu. Use the `proxmox_sdn_*` resources — the
-`proxmox_virtual_environment_sdn_*` ones are deprecated. There is no second
-node, so no zone spans nodes.
+Proxmox provider: `bpg/proxmox`. There is no SDN (0xc0-labs/infrastructure#289):
+zones are Linux bridges over the vSwitches' VLAN interfaces, made by
+`modules/zone-bridge` on every node, and the routing node's `.1` comes from
+`zone_gateways`. Its SNAT, conntrack zone rule and MSS clamp are written by
+hand in its `/etc/network/interfaces`.
 
 Cloudflare — tunnels, Zero Trust, DNS, the applications' R2 buckets — lives
 in the same root, `environments/prod/`, alongside the node (operator
@@ -71,11 +74,12 @@ first and the other keeps the service. A dry run changes nothing:
 `scripts/ansible` runs it on every host at once (`play_serial`).
 
 Ansible never touches the node. Every zone reaches the internet, so the node
-needs no forwarding rule of its own: Docker carries one setting by hand,
-`ip-forward-no-drop`, that keeps the `FORWARD` policy ACCEPT
-(`docs/architecture.md`, The node). A zone that must never egress would need a
-DROP rule in `DOCKER-USER`; the `node_forwarding` role that wrote it is in
-git history (#101). PBS and Docker itself are never touched from this repo.
+needs no forwarding rule of its own. `pve-2` has no Docker: its forwarding
+comes from `/etc/sysctl.d/90-ip-forward.conf` and its `FORWARD` policy is
+ACCEPT by default (`docs/architecture.md`, The node). A zone that must never
+egress would need a DROP rule in `FORWARD`; the `node_forwarding` role that
+wrote one is in git history (#101). PBS and `pve-1`'s Docker are never touched
+from this repo.
 
 Ansible reaches every VM directly over WARP.
 

@@ -1,5 +1,5 @@
 # Creating them makes Proxmox rewrite /etc/network/interfaces and run
-# `ifreload -a`. Hand-written lines of a stanza (the zone's SNAT on pve-1) are
+# `ifreload -a`. Hand-written lines of a stanza (the zone's SNAT on the routing node) are
 # kept by the API when it rewrites it (#284).
 resource "proxmox_network_linux_vlan" "zone" {
   node_name = var.node_name
