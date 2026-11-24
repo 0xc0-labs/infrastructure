@@ -12,11 +12,11 @@ disagrees with the code or with the design, they win.
 ## The node
 
 Two Hetzner dedicated servers, Proxmox VE 9. `pve-1` (`pve.0xc0.cc`): 12 CPU,
-62 GB RAM, two NVMe disks in mdadm RAID 0, to be reinstalled with RAID 1.
-`pve-2`: two NVMe disks in mdadm RAID 1.
+62 GB RAM, two NVMe disks in mdadm RAID 1, reinstalled on 2026-11-25 and
+rejoined to the cluster. `pve-2`: two NVMe disks in mdadm RAID 1.
 
 They are the two nodes of a Proxmox cluster named `cluster`: no
-QDevice and no HA, `pve-1` with 2 votes and `pve-2` with 1, so `pve-1` keeps
+QDevice and no HA, `pve-2` with 2 votes and `pve-1` with 1, so `pve-2` keeps
 quorum alone. They talk over one corosync link on the vSwitch `cluster`
 (`10.20.0.1` and `10.20.0.2`, [`zones.md`](zones.md#vswitches)), and both are in
 `nodes`, each with its link interface and the same firewall rules from this
@@ -25,8 +25,9 @@ root. Every machine, VM and template names the node it runs on, its `node` in
 runs every VM, RKE2 machine, container and template, and Packer builds there.
 `pve-2` alone holds the zones' gateway and SNAT (`zone_gateways`) and runs PBS;
 `pve-1`'s bridges are layer 2 only. The `sbox` storage is `server 10.20.0.2`, `pve-2`'s link address,
-which both nodes reach. `pve-1` takes the role back, and its share of the
-guests, once it has been reinstalled with RAID 1 and rejoined (workspace#285). The rest of this section
+which both nodes reach. `pve-1` holds no guest yet and does not route for the
+zones; it takes the role back, and its share of the guests, in the next steps
+of workspace#285. The rest of this section
 says which node each paragraph is about.
 
 **Containers.** Beside the VMs there are LXC containers, the `containers` map in
@@ -83,13 +84,15 @@ flowchart TB
 
 - **Base services** — PBS runs on `pve-2`'s host, with the Storage Box mounted
   there at `/mnt/pbs`; it is not managed by any repo in this org, and nothing
-  here may touch it. On `pve-1` it is stopped and disabled. Traefik and RustFS run in
+  here may touch it. `pve-1` has none. Traefik and RustFS run in
   `ct-base-01`, managed here: OpenTofu makes the container and Ansible
   configures what is inside it. That Traefik is only the reverse proxy of the
   Proxmox UI, PBS and RustFS; it is not the application ingress.
-- **Disks** — `pve-1` is RAID 0, by decision: no redundancy, so one NVMe
-  failure loses it, and recovery is a reinstall plus a restore from PBS on the
-  Storage Box. It is to be reinstalled with RAID 1. `pve-2` is RAID 1.
+- **Disks** — both nodes are RAID 1. `pve-1` was RAID 0 until it was
+  reinstalled on 2026-11-25 by the README's
+  [Adding a node](../README.md#adding-a-node) and rejoined over the link with
+  `pvecm add 10.20.0.2 --link0 10.20.0.1 --use_ssh`, since `pve-2`'s `root` has
+  no password ([A node that rejoins](../README.md#a-node-that-rejoins)).
 - **`eno1`** keeps the public IP. Guests never attach to it: Hetzner drops
   unknown MACs on the public interface. They live on the zones' bridges, and
   reach the internet through the SNAT on `pve-2`, to `142.132.139.52`.
@@ -98,9 +101,7 @@ flowchart TB
   and, for the zone, the SNAT and the conntrack zone rule (`zones.md`, Zones).
   The provider's resources keep those lines when they rewrite the file. On
   `pve-1` the bridges are `inet manual`, with the conntrack zone rule alone.
-- **Docker** is on `pve-1` only: Traefik and RustFS moved to `ct-base-01`, so
-  its containers are stopped, but its daemon runs, and Docker goes when
-  `pve-1` is reinstalled. `pve-2` has none.
+- **No node has Docker** (`pve-1`'s went with its reinstall).
   The zone firewall needs the `FORWARD` policy at ACCEPT on every node that
   hosts guests, not only the routing one: a guest's traffic crosses its
   firewall bridge on the node it runs on, through that node's `FORWARD` chain
@@ -110,11 +111,9 @@ flowchart TB
   traffic *out of* a VM, and the hop across a zone bridge, to that policy, so
   a DROP takes every VM's egress and its peers (tested in
   [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). Docker sets
-  DROP unless `/etc/docker/daemon.json` has `{"ip-forward-no-drop": true}`:
-  `pve-1`'s daemon runs with it, and it stays until the reinstall, or a
-  restart of `dockerd` would cut the egress and the peers of every guest on
-  `pve-1`. `pve-2`, with no Docker, has ACCEPT by default. Being the routing
-  node adds only forwarding (`ip_forward`) on top of that.
+  DROP, which is why a node that ran it needed `ip-forward-no-drop`; a node
+  with no Docker, as both are, has ACCEPT by default. Being the routing node
+  adds only forwarding (`ip_forward`) on top of that.
 - **Forwarding**, also by hand, on a node that routes for the zones. Only the
   zones' bridges forward by themselves; the replies come in
   through `eno1`, whose forwarding follows `net.ipv4.ip_forward`, and no file
@@ -167,8 +166,7 @@ flowchart TB
   incoming rules Hetzner allows.
 
 Some of these bullets hold only for one node, each for its own reason. PBS, because
-`pve-2` runs it, and Docker, because `pve-1` still has it: they
-do not apply to a node installed without them, as in the README's
+`pve-2` runs it: it does not apply to a node installed without it, as in the README's
 [Adding a node](../README.md#adding-a-node). Disks, because of the RAID level.
 The forwarding is only for the node that routes for the zones, `pve-2`: the
 gateway and SNAT are its own, and a guest on another node reaches them over
@@ -411,8 +409,8 @@ PBS on the host backs every VM up whole, data disks included, daily, to a
 datastore on the Hetzner Storage Box (`backup` in `terraform.tfvars`, module
 `backup-job`). There is one PBS, on `pve-2`'s host, and every node reaches it
 on `10.20.0.2`: the job names no node, so each node backs up the guests of its
-list that live on it. With RAID 0 on the node, a restore from it is the recovery
-plan, so it is **timed and written down**: a restore that has not been timed
+list that live on it. With RAID 1 a node survives one NVMe failing, but not two or a lost
+server: a restore from it is the recovery plan then, so it is **timed and written down**: a restore that has not been timed
 does not count as tested.
 
 ## Where each thing lives

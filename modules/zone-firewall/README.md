@@ -37,10 +37,9 @@ the Proxmox docs call a tech preview.
 
 The `FORWARD` policy must be ACCEPT on every node that hosts guests, as Proxmox
 expects: a guest's traffic crosses its firewall bridge on the node it runs on.
-`pve-2` has no Docker, so it is ACCEPT by default, and its forwarding comes from
-`/etc/sysctl.d/90-ip-forward.conf` (`docs/architecture.md`, The node). `pve-1`
-runs Docker, which would set DROP and cut every guest's egress once the
-datacenter firewall is on, so its daemon keeps `ip-forward-no-drop`.
+Neither node has Docker, so both are ACCEPT by default; the routing node's
+forwarding comes from `/etc/sysctl.d/90-ip-forward.conf`
+(`docs/architecture.md`, The node).
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

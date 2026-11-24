@@ -4,14 +4,16 @@ The workspace's `CLAUDE.md` holds the org's rules, which apply here too; this
 file holds only this repo's.
 
 Proxmox VE 9 on two Hetzner dedicated servers, `pve-1` (`pve.0xc0.cc`) and
-`pve-2`, one cluster, no ZFS. `pve-1` has 2× NVMe in mdadm RAID 0, to be
-reinstalled with RAID 1; `pve-2` has 2× NVMe in RAID 1. Each zone is a Linux
+`pve-2`, one cluster, no ZFS. Both have 2× NVMe in mdadm RAID 1: `pve-1` was
+reinstalled on 2026-11-25 by the README's "Adding a node" and rejoined over the
+link with `pvecm add 10.20.0.2 --link0 10.20.0.1 --use_ssh`, since `pve-2`'s
+`root` has no password. Each zone is a Linux
 bridge over its Hetzner vSwitch on both nodes, not SDN. `pve-2` is router and
 firewall and holds `.1` in every zone; `eno1` keeps the public IP, and egress
 is SNAT through `eno1`. `pve-1`'s bridges are layer 2 only.
 
-`pve-2`'s host also runs PBS, and `pve-1` has Docker, its containers stopped.
-They are **not managed from this repo** and must never be touched by it: PBS
+`pve-2`'s host also runs PBS, and `pve-1` has no Docker any more. PBS is
+**not managed from this repo** and must never be touched by it: it
 backs up to a Hetzner Storage Box. Traefik,
 the reverse proxy for the Proxmox UI, PBS and RustFS, and RustFS, which holds
 the OpenTofu state, run in `ct-base-01` and are managed here: OpenTofu makes
@@ -78,8 +80,7 @@ needs no forwarding rule of its own. `pve-2` has no Docker: its forwarding
 comes from `/etc/sysctl.d/90-ip-forward.conf` and its `FORWARD` policy is
 ACCEPT by default (`docs/architecture.md`, The node). A zone that must never
 egress would need a DROP rule in `FORWARD`; the `node_forwarding` role that
-wrote one is in git history (#101). PBS and `pve-1`'s Docker are never touched
-from this repo.
+wrote one is in git history (#101). PBS is never touched from this repo.
 
 Ansible reaches every VM directly over WARP.
 
