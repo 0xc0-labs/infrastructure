@@ -54,10 +54,12 @@ admits VLANs 4000 to 4091, 5 vSwitches a server and an MTU of 1400 at most.
 | `platform` | 4003 | the `platform` zone, `10.10.4.0/24` |
 
 They are created and attached. `cluster` is the only one in use: each node
-holds its address on it from configuration (`node_links` in
+holds its address on it (`node_links` in
 `environments/prod/terraform.tfvars`, the interface `eno1.4000` with MTU
-1400, made by `modules/node-link`): `pve-1` holds `10.20.0.1` and `pve-2`
-`10.20.0.2`. **The zones do not ride the other three yet**. Today every zone is still the SDN VNet described above, on `pve-1`
+1400): `pve-1` holds `10.20.0.1` and `pve-2` `10.20.0.2`.
+`modules/node-link` makes the interface only for a node of `nodes`, so today
+only `pve-1`'s is from configuration; `pve-2`'s was made through the API during
+the rehearsal, and the module takes it over when `pve-2` enters `nodes`. **The zones do not ride the other three yet**. Today every zone is still the SDN VNet described above, on `pve-1`
 alone. Hetzner's firewall filters the vSwitches too
 ([`architecture.md`](architecture.md#the-node)).
 
