@@ -1,12 +1,14 @@
 # backup-job
 
-A backup job on the node: the listed VMs, whole, to a PBS storage.
+A backup job of the cluster: the listed VMs, whole, to a PBS storage.
 
 - The mode is `snapshot`, so the guests keep running. Every disk goes in,
   data disks included: that is how the RKE2 nodes' Longhorn volumes are
   backed up.
 - `retention` becomes the job's prune settings (`keep-daily`, `keep-weekly`,
   and so on). PBS applies them per guest after each run.
+- The job sets no node, so each node backs up the guests of the list that
+  live on it.
 - The PBS storage itself (the datastore on the Storage Box) is configured on
   the node, outside this repo.
 
@@ -39,7 +41,6 @@ No modules.
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_id"></a> [id](#input\_id) | The job's identifier in Proxmox. | `string` | n/a | yes |
-| <a name="input_node_name"></a> [node\_name](#input\_node\_name) | Proxmox node the job runs on. | `string` | n/a | yes |
 | <a name="input_retention"></a> [retention](#input\_retention) | How many backups PBS keeps per guest, by period. 0 keeps none of that period. | <pre>object({<br/>    last    = optional(number, 0)<br/>    daily   = optional(number, 0)<br/>    weekly  = optional(number, 0)<br/>    monthly = optional(number, 0)<br/>    yearly  = optional(number, 0)<br/>  })</pre> | n/a | yes |
 | <a name="input_schedule"></a> [schedule](#input\_schedule) | When the job runs, as a Proxmox calendar event (e.g. "03:00" for daily at 03:00). | `string` | n/a | yes |
 | <a name="input_storage"></a> [storage](#input\_storage) | Backup storage the job writes to: a PBS storage already configured on the node. | `string` | n/a | yes |

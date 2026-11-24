@@ -286,8 +286,9 @@ module "zone_firewall" {
       { for name, n in merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes) : name => n.ip },
     )[s]]
   })]
-  node_admin = var.node_firewall
-  node_links = { for node, l in var.node_links : node => l.address }
+  node_admin     = var.node_firewall
+  node_links     = { for node, l in var.node_links : node => l.address }
+  node_link_cidr = var.node_link.cidr
   vms = merge(
     { for name, vm in var.vms : name => {
       vm_id = module.vms[name].vm_id
@@ -315,10 +316,9 @@ moved {
 module "backup" {
   source = "../../modules/backup-job"
 
-  id        = "vms-daily"
-  node_name = var.nodes[0]
-  storage   = var.backup.storage
-  schedule  = var.backup.schedule
+  id       = "vms-daily"
+  storage  = var.backup.storage
+  schedule = var.backup.schedule
   vm_ids = concat(
     [for name, vm in module.vms : vm.vm_id],
     [for name, vm in module.cluster.vms : vm.vm_id],

@@ -141,7 +141,10 @@ rule in Proxmox always traces back to its line of the matrix.
   and 8006. Towards `platform`, `ci` gets 22, 6443 and 443: the last one for
   the vault repo's CI, which reaches Vault on the internal VIP (the rule opens
   443 to the whole zone, the VIPs included). From anywhere else, the entry's ports as written: 9100 from
-  `platform`, for the node metrics scrape.
+  `platform`, for the node metrics scrape, and 8007 from `nodes`, PBS on
+  `pve-1`'s host for the guests of the other nodes. `nodes` is not a zone: it
+  is the link between the nodes (`node_link.cidr`), usable as an entry's
+  `from`.
 - An entry towards the **internet** is egress, allowed by the outbound policy
   of every zone that has one.
 - An entry with an empty `to` gives that zone's VMs an outbound DROP policy.
@@ -176,7 +179,8 @@ its PR. Those marked **(code)** are also validations in
 6. Every node stays on DROP, with the same rules on each: only 22, 443 and
    8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
    from the internet only SSH as break-glass, closed by the Hetzner firewall
-   until opened **(code)**. The one
+   until opened **(code)**; and 8007 from the link between the nodes, which is
+   PBS on `pve-1`'s host. The one
    other ingress is the nodes from each other: the datacenter's `management`
    set holds every address of `node_links`, and Proxmox admits its members to
    22, 8006, 3128, 5900 to 5999 and 60000 to 60050, which is what a cluster

@@ -22,7 +22,7 @@ quorum alone. They talk over one corosync link on the vSwitch `cluster`
 root. `pve-1` is the first of them: it runs every VM, the templates and the
 backups, and it alone holds the zones' gateway and SNAT (`sdn_nodes`) until the
 zones ride the vSwitches. `pve-2` has no guest. PBS runs on `pve-1`'s host, so
-its `sbox` storage is restricted to `pve-1`. The rest of this section is
+its `sbox` storage is reached over the link, on `10.20.0.1`. The rest of this section is
 `pve-1`.
 
 ```mermaid
@@ -347,7 +347,9 @@ flowchart LR
 
 PBS on the host backs every VM up whole, data disks included, daily, to a
 datastore on the Hetzner Storage Box (`backup` in `terraform.tfvars`, module
-`backup-job`). With RAID 0 on the node, a restore from it is the recovery
+`backup-job`). There is one PBS, on `pve-1`'s host, and every node reaches it
+on `10.20.0.1`: the job names no node, so each node backs up the guests of its
+list that live on it. With RAID 0 on the node, a restore from it is the recovery
 plan, so it is **timed and written down**: a restore that has not been timed
 does not count as tested.
 

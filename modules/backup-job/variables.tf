@@ -3,11 +3,6 @@ variable "id" {
   type        = string
 }
 
-variable "node_name" {
-  description = "Proxmox node the job runs on."
-  type        = string
-}
-
 variable "storage" {
   description = "Backup storage the job writes to: a PBS storage already configured on the node."
   type        = string
