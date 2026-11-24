@@ -1,6 +1,12 @@
 # Secrets come from the environment, never from here.
 
-nodes = ["pve-1"]
+# Order matters: the first node runs the templates, the VMs, the cluster, the
+# backups and the VM firewalls (`var.nodes[0]`).
+nodes = ["pve-1", "pve-2"]
+
+# The zone stays on pve-1, which holds the gateway and SNAT: pve-2 has none of
+# the zones' bridges until they ride the vSwitches.
+sdn_nodes = ["pve-1"]
 
 # The link between the nodes: the vSwitch `cluster` (docs/zones.md, vSwitches).
 node_link = {

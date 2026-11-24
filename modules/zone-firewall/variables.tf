@@ -1,6 +1,11 @@
-variable "node_name" {
-  description = "Proxmox node."
-  type        = string
+variable "node_names" {
+  description = "The nodes that get the node's firewall options and rules, the same on each. VM firewalls go on the first one, where every VM runs."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.node_names) > 0
+    error_message = "node_names: at least one node."
+  }
 }
 
 variable "enabled" {

@@ -2,7 +2,7 @@ module "sdn" {
   source = "../../modules/sdn-zone"
 
   zone_id = var.sdn_zone_id
-  nodes   = var.nodes
+  nodes   = var.sdn_nodes
   vnets   = var.zones
 }
 
@@ -52,6 +52,12 @@ module "node_link" {
   address       = each.value.address
   prefix_length = tonumber(split("/", var.node_link.cidr)[1])
   mtu           = var.node_link.mtu
+}
+
+# pve-2's interface was made through the API before this root managed it (#277).
+import {
+  to = module.node_link["pve-2"].proxmox_network_linux_vlan.link
+  id = "pve-2:eno1.4000"
 }
 
 module "zero_trust" {
@@ -268,7 +274,7 @@ module "cluster" {
 module "zone_firewall" {
   source = "../../modules/zone-firewall"
 
-  node_name    = var.nodes[0]
+  node_names   = var.nodes
   enabled      = var.datacenter_firewall_enabled
   node_enabled = var.node_firewall_enabled
   zones        = { for vnet, z in var.zones : vnet => { alias = z.alias, cidr = z.cidr } }
@@ -292,6 +298,17 @@ module "zone_firewall" {
   )
 
   depends_on = [module.vms, module.cluster]
+}
+
+# The node's firewall was one resource per kind before it ran on every node.
+moved {
+  from = module.zone_firewall.proxmox_node_firewall.main
+  to   = module.zone_firewall.proxmox_node_firewall.main["pve-1"]
+}
+
+moved {
+  from = module.zone_firewall.proxmox_virtual_environment_firewall_rules.node
+  to   = module.zone_firewall.proxmox_virtual_environment_firewall_rules.node["pve-1"]
 }
 
 # Templates stay out; Packer rebuilds them.
