@@ -54,16 +54,17 @@ template_datastore = "local"
 templates = {
   "debian-13-cloud" = {
     vm_id          = 9000
-    node           = "pve-1"
+    node           = "pve-2"
     image_url      = "https://cloud.debian.org/images/cloud/trixie/20260914-2601/debian-13-genericcloud-amd64-20260914-2601.qcow2"
     image_checksum = "95e110dfcdbd0ed8a82a75ed9579802f9950cabf51a810dcc6388e81bc778188713878b9f28d583a0ea602fbf48b35996ae9ad37f584166d8fbd6489df248f53"
     bridge         = "mgmt"
   }
   # Rocky publishes only SHA-256.
   "rocky-10-cloud" = {
-    vm_id              = 9001
-    node               = "pve-1"
-    image_url          = "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base-10.2-20260525.0.x86_64.qcow2"
+    vm_id = 9001
+    node  = "pve-2"
+    # Rocky moves a release to its vault once the next one is out, and a vault URL does not move again.
+    image_url          = "https://dl.rockylinux.org/vault/rocky/10.2/images/x86_64/Rocky-10-GenericCloud-Base-10.2-20260525.0.x86_64.qcow2"
     image_checksum     = "9fc9e9ff16888bb68ac39b0392e25c9c92684d50c85f1cce6ab549363bbc4b48"
     checksum_algorithm = "sha256"
     # The image's virtual size.
@@ -87,7 +88,7 @@ vm_dns_servers = ["1.1.1.1", "1.0.0.1"]
 # The VMs outside the cluster. The addressing plan is in docs/zones.md.
 vms = {
   "vm-access-01" = {
-    node      = "pve-1"
+    node      = "pve-2"
     rebuild   = 1
     template  = "debian-13-base"
     vnet      = "mgmt"
@@ -97,7 +98,7 @@ vms = {
   }
   # One connector can be rebuilt while the other keeps admin access.
   "vm-access-02" = {
-    node      = "pve-1"
+    node      = "pve-2"
     rebuild   = 2
     template  = "debian-13-base"
     vnet      = "mgmt"
@@ -107,7 +108,7 @@ vms = {
   }
   # Two, so a job on one can rebuild the other.
   "vm-ci-01" = {
-    node         = "pve-1"
+    node         = "pve-2"
     rebuild      = 1
     template     = "debian-13-runner"
     vnet         = "ci"
@@ -117,7 +118,7 @@ vms = {
     disk_size_gb = 32
   }
   "vm-ci-02" = {
-    node         = "pve-1"
+    node         = "pve-2"
     template     = "debian-13-runner"
     vnet         = "ci"
     ip           = "10.10.1.20"
@@ -153,8 +154,8 @@ containers = {
 }
 
 # Enforces every VM's firewall. Needs the FORWARD policy at ACCEPT on every node
-# that hosts guests: pve-2 by default (no Docker), pve-1 through Docker's
-# ip-forward-no-drop (docs/architecture.md, The node).
+# that hosts guests: pve-2 by default (no Docker), and pve-1 through Docker's
+# ip-forward-no-drop once it hosts guests again (docs/architecture.md, The node).
 datacenter_firewall_enabled = true
 
 # The Hetzner Rescue system is the way back in.
@@ -173,8 +174,8 @@ cluster = {
   load_balancers = {
     template = "debian-13-base"
     nodes = {
-      "vm-lb-01" = { node = "pve-1", ip = "10.10.4.11" }
-      "vm-lb-02" = { node = "pve-1", ip = "10.10.4.12" }
+      "vm-lb-01" = { node = "pve-2", ip = "10.10.4.11" }
+      "vm-lb-02" = { node = "pve-2", ip = "10.10.4.12" }
     }
   }
   servers = {
@@ -183,9 +184,9 @@ cluster = {
     disk_size_gb  = 50
     data_disks_gb = [100, 100]
     nodes = {
-      "vm-rke2-01" = { node = "pve-1", ip = "10.10.4.21", rebuild = 1 }
-      "vm-rke2-02" = { node = "pve-1", ip = "10.10.4.22", rebuild = 1 }
-      "vm-rke2-03" = { node = "pve-1", ip = "10.10.4.23", rebuild = 1 }
+      "vm-rke2-01" = { node = "pve-2", ip = "10.10.4.21", rebuild = 1 }
+      "vm-rke2-02" = { node = "pve-2", ip = "10.10.4.22", rebuild = 1 }
+      "vm-rke2-03" = { node = "pve-2", ip = "10.10.4.23", rebuild = 1 }
     }
   }
   # Workers only (operator decision, 2026-09-30): etcd stays with the servers.
@@ -194,7 +195,7 @@ cluster = {
     disk_size_gb  = 50
     data_disks_gb = [100, 100]
     nodes = {
-      "vm-rke2-04" = { node = "pve-1", ip = "10.10.4.24" }
+      "vm-rke2-04" = { node = "pve-2", ip = "10.10.4.24" }
     }
   }
 }
