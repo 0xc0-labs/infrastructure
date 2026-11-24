@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Traefik
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ traefik_user }}
+EnvironmentFile={{ traefik_config_dir }}/traefik.env
+ExecStart={{ traefik_install_dir }}/traefik --configFile={{ traefik_config_dir }}/traefik.yml
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths={{ traefik_state_dir }}
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

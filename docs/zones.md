@@ -138,7 +138,8 @@ The addressing plan, so that no address is handed out twice:
 today: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
 holds the OpenTofu state, and nothing enters `mgmt` from another zone but SSH
 from the CI VMs (invariant 5). Its gateway is `pve-1`'s `.1`, across the
-vSwitch, like every guest's on `pve-2`. Nothing runs in it yet.
+vSwitch, like every guest's on `pve-2`. Traefik and RustFS run in it, from the
+pipeline, but nothing points at it yet (README, ct-base-01).
 
 The `platform` VIPs are not VMs: they are the keepalived addresses the two
 `vm-lb` VMs share, in front of HAProxy, and they always move together.

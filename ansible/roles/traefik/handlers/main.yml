@@ -1,0 +1,6 @@
+- name: Restart traefik
+  ansible.builtin.systemd_service:
+    name: traefik
+    state: restarted
+    daemon_reload: true
+  when: not (ansible_check_mode and (traefik_unit is changed or traefik_account is changed or traefik_tarball is changed))

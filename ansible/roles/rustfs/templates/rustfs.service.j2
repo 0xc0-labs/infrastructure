@@ -1,0 +1,30 @@
+# {{ ansible_managed }}
+[Unit]
+Description=RustFS object storage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ rustfs_user }}
+# systemd reads the root credentials as root, then drops to the user.
+EnvironmentFile={{ rustfs_env_file }}
+Environment=RUSTFS_VOLUMES={{ rustfs_data_dir }}
+Environment=RUSTFS_ADDRESS={{ rustfs_address }}
+Environment=RUSTFS_CONSOLE_ENABLE=true
+Environment=RUSTFS_CONSOLE_ADDRESS={{ rustfs_console_address }}
+ExecStart={{ rustfs_install_dir }}/rustfs
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+NoNewPrivileges=yes
+# full, not strict: what else RustFS writes outside its data is not known, and
+# a start that fails here cannot be tested from a dry run.
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

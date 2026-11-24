@@ -1,0 +1,28 @@
+argument_specs:
+  main:
+    short_description: RustFS, the S3 store that holds the OpenTofu state, as a pinned binary under systemd
+    description:
+      - Installs RustFS pinned by version and checksum, and runs it as the
+        system user rustfs, with its data in /var/lib/rustfs. The API and the
+        console listen on loopback only, and Traefik in the same container is
+        the way in.
+      - The root credentials are in /etc/rustfs/rustfs.env, which the operator
+        writes (README.md). The role checks that the file exists and is 0600,
+        and never reads it. It creates no bucket and no user.
+    options:
+      rustfs_version:
+        type: str
+        default: "1.0.6"
+        description: Release to install.
+      rustfs_zip_sha256:
+        type: str
+        default: a4d109a09857c04bf5d11b2cec0fbbf0887819b9392e5d46d7d153dae6a1398f
+        description: SHA-256 of that release's rustfs-linux-x86_64-musl-v<version>.zip, from its SHA256SUMS.
+      rustfs_address:
+        type: str
+        default: "127.0.0.1:9000"
+        description: Where the S3 API listens. Traefik's routes point here.
+      rustfs_console_address:
+        type: str
+        default: "127.0.0.1:9001"
+        description: Where the console listens. Traefik's routes point here.

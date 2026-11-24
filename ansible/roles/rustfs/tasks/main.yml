@@ -1,0 +1,98 @@
+- name: Install unzip
+  ansible.builtin.apt:
+    name: unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create the rustfs user, whose home is the data directory
+  ansible.builtin.user:
+    name: "{{ rustfs_user }}"
+    system: true
+    home: "{{ rustfs_data_dir }}"
+    create_home: true
+    shell: /usr/sbin/nologin
+  register: rustfs_account
+
+- name: Look for the RustFS binary
+  ansible.builtin.stat:
+    path: "{{ rustfs_install_dir }}/rustfs"
+  register: rustfs_binary
+
+- name: Download RustFS {{ rustfs_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/rustfs/rustfs/releases/download/{{ rustfs_version }}/rustfs-linux-x86_64-musl-v{{ rustfs_version }}.zip"
+    dest: "/var/cache/rustfs-{{ rustfs_version }}.zip"
+    checksum: "sha256:{{ rustfs_zip_sha256 }}"
+    mode: "0644"
+  register: rustfs_zip
+  when: not rustfs_binary.stat.exists
+
+- name: Create the install directory
+  ansible.builtin.file:
+    path: "{{ rustfs_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# A dry run downloads nothing, so there may be no zip yet.
+- name: Unpack RustFS {{ rustfs_version }}
+  ansible.builtin.unarchive:
+    src: "/var/cache/rustfs-{{ rustfs_version }}.zip"
+    dest: "{{ rustfs_install_dir }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+    creates: "{{ rustfs_install_dir }}/rustfs"
+  when: not rustfs_binary.stat.exists and not (ansible_check_mode and rustfs_zip is changed)
+  notify: Restart rustfs
+
+# The binary is 290 MB, and the container's disk is 8 GB.
+- name: Drop the zip
+  ansible.builtin.file:
+    path: "/var/cache/rustfs-{{ rustfs_version }}.zip"
+    state: absent
+
+- name: Create the config directory
+  ansible.builtin.file:
+    path: /etc/rustfs
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Look for the root credentials
+  ansible.builtin.stat:
+    path: "{{ rustfs_env_file }}"
+  register: rustfs_credentials
+
+- name: Refuse a missing or open credentials file
+  ansible.builtin.assert:
+    that:
+      - rustfs_credentials.stat.exists
+      - rustfs_credentials.stat.mode == "0600"
+      - rustfs_credentials.stat.pw_name == "root"
+    fail_msg: >-
+      {{ rustfs_env_file }} must exist, owned by root, mode 0600. The operator writes it:
+      the RustFS admin of the password manager, as RUSTFS_ACCESS_KEY and RUSTFS_SECRET_KEY
+      (README.md, ct-base-01).
+
+- name: Install the systemd unit
+  ansible.builtin.template:
+    src: rustfs.service.j2
+    dest: /etc/systemd/system/rustfs.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: rustfs_unit
+  notify: Restart rustfs
+
+- name: Enable and start RustFS
+  ansible.builtin.systemd_service:
+    name: rustfs
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not (ansible_check_mode and (rustfs_unit is changed or rustfs_account is changed or rustfs_zip is changed))

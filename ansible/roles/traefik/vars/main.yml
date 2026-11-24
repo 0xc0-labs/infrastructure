@@ -1,0 +1,4 @@
+traefik_user: traefik
+traefik_state_dir: /var/lib/traefik
+traefik_install_dir: "/opt/traefik/{{ traefik_version }}"
+traefik_config_dir: /etc/traefik
