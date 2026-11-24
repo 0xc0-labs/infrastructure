@@ -89,8 +89,8 @@ wipefs -a <each leftover partition>; sgdisk --zap-all <the drive>; wipefs -a <th
 
 Then, in `installimage`'s batch mode, which asks nothing and **erases the
 drives it names**. This is `pve-2`: change `-n` for the hostname, `-l` for the
-RAID level (`pve-1` is `-l 0`, an accepted risk, `docs/architecture.md`,
-Disks; `pve-2` is `-l 1`) and `-d` for the drives:
+RAID level (both nodes are `-l 1`, `docs/architecture.md`, Disks) and `-d`
+for the drives:
 
 ```
 installimage -a -n pve-2 -r yes -l 1 \
@@ -170,7 +170,7 @@ After it, check with `ss -tlnp` that only 22 listens on the public address.
   they are needed: [`docs/architecture.md`](docs/architecture.md#the-node).
 
 [`docs/architecture.md`](docs/architecture.md#the-node) describes both nodes:
-`pve-2` routes for the zones and runs PBS, `pve-1` still has Docker. A
+`pve-2` routes for the zones and runs PBS; `pve-1` has neither. A
 paragraph about one does not apply to a node without it.
 
 ### 5. Not before the join
@@ -183,8 +183,8 @@ The vSwitches the node is attached to are in
 ## Forming the cluster
 
 How `pve-1` and `pve-2` become one Proxmox cluster, named `cluster`: two nodes,
-no QDevice, no HA. `pve-1` holds 2 votes and `pve-2` 1, so `pve-1` keeps quorum
-alone. One corosync link, on the vSwitch `cluster`
+no QDevice, no HA. Since `pve-1` rejoined (2026-11-25), `pve-2` holds 2 votes
+and `pve-1` 1, so `pve-2` keeps quorum alone. One corosync link, on the vSwitch `cluster`
 ([`docs/zones.md`](docs/zones.md#vswitches)): a second one, on the public
 addresses, would ride the same NIC and need the last free rule of each server's
 firewall in Robot. The operator runs every step, in order; nothing is applied
@@ -299,6 +299,39 @@ reboot does not stop a join.
     ([`docs/zones.md`](docs/zones.md#zones),
     [`docs/architecture.md`](docs/architecture.md#the-node)).
     `pve-1`'s bridges are layer 2 only.
+
+### A node that rejoins
+
+A node reinstalled after it was removed (`pve-1`, 2026-11-25,
+0xc0-labs/infrastructure#308) is joined again, not created again, in this
+order:
+
+1. **Remove it from the cluster** while it is off. Move the votes first, so
+   the remaining node keeps quorum alone (`pve-2` 2, `pve-1` 1), then
+   `pvecm delnode pve-1` on the node that stays. Take a copy of
+   `/etc/pve/nodes/<name>` and remove it, and the old host keys of the name
+   from the cluster's files.
+2. **Install it** by [Adding a node](#adding-a-node), with the same hostname.
+3. **Keep it closed until the join:** `sshd` by key only, `pveproxy` on
+   loopback, `rpcbind` off, the enterprise repository removed.
+4. **Set by hand** what the join needs: `eno1`'s offload line, `eno1.4000`
+   with its link address (`10.20.0.1/24`, MTU 1400), and `/etc/hosts` with
+   the link address and the name alone, no IPv6 line for it. Then
+   `systemctl restart pve-cluster pvedaemon pveproxy pvestatd` and
+   `pvecm updatecerts --force`.
+5. **Join.** Put the node's new `root` key in the cluster's `authorized_keys`
+   and take the old one out, remove the `LISTEN_IP` line, then, on the node:
+
+   ```
+   pvecm add 10.20.0.2 --link0 10.20.0.1 --use_ssh
+   ```
+
+   `--use_ssh` because `pve-2`'s `root` has no password to give the join.
+
+Seen: `pvecm status` shows `Total votes: 3` and `Quorate: Yes`,
+`pve-firewall status` is `enabled/running` on the node, and its `local` and
+`sbox` storages are active. Until the apply of its node rules, its public SSH
+is closed and it is reached over the link.
 
 ## Changing a guest's NIC
 
@@ -424,6 +457,6 @@ To add or remove a viewer, in Cloudflare: Zero Trust → Access → Access group
 members and owns everything else (`modules/access-app/README.md`).
 
 The PBS running on `pve-2`'s host, with the Storage Box mounted at `/mnt/pbs`,
-and `pve-1`'s stopped Docker, are **not** managed here. Traefik and RustFS
+is **not** managed here. Traefik and RustFS
 are, in `ct-base-01`. The `sbox` storage is `server 10.20.0.2`, in
 `/etc/pve/storage.cfg`.

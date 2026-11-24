@@ -16,8 +16,8 @@ port, both at MTU 1400, and every guest's NIC names the bridge. The gateway is
 It also does the SNAT for egress through `eno1`, to its public address
 `142.132.139.52`. A node with no entry in `zone_gateways`, `pve-1` today, has
 the bridge at layer 2 only, and its guests' gateway is `pve-2`'s `.1` across
-the vSwitch. `pve-1` takes the role back once it has been reinstalled with
-RAID 1 and has rejoined (workspace#285). The zones are the `zones` map in `terraform.tfvars`, keyed
+the vSwitch. `pve-1`, reinstalled with RAID 1 and rejoined on 2026-11-25,
+takes the role back in the next steps of workspace#285. The zones are the `zones` map in `terraform.tfvars`, keyed
 by bridge name (at most 8 letters and digits); `alias` is the name everything
 else uses.
 
