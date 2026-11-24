@@ -41,6 +41,19 @@ module "templates" {
   depends_on = [module.sdn]
 }
 
+# Only the nodes this root runs on get an interface; the set below holds them all.
+module "node_link" {
+  source   = "../../modules/node-link"
+  for_each = { for node, l in var.node_links : node => l if contains(var.nodes, node) }
+
+  node_name     = each.key
+  nic           = each.value.nic
+  vlan          = var.node_link.vlan
+  address       = each.value.address
+  prefix_length = tonumber(split("/", var.node_link.cidr)[1])
+  mtu           = var.node_link.mtu
+}
+
 module "zero_trust" {
   source = "../../modules/zero-trust"
 
@@ -268,6 +281,7 @@ module "zone_firewall" {
     )[s]]
   })]
   node_admin = var.node_firewall
+  node_links = { for node, l in var.node_links : node => l.address }
   vms = merge(
     { for name, vm in var.vms : name => {
       vm_id = module.vms[name].vm_id

@@ -2,6 +2,18 @@
 
 nodes = ["pve-1"]
 
+# The link between the nodes: the vSwitch `cluster` (docs/zones.md, vSwitches).
+node_link = {
+  vlan = 4000
+  cidr = "10.20.0.0/24"
+  mtu  = 1400
+}
+
+node_links = {
+  "pve-1" = { nic = "eno1", address = "10.20.0.1" }
+  "pve-2" = { nic = "eno1", address = "10.20.0.2" }
+}
+
 sdn_zone_id = "homelab"
 
 # Keyed by VNet ID, at most 8 letters and digits (docs/zones.md, Zones).

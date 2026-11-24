@@ -3,6 +3,48 @@ variable "nodes" {
   type        = list(string)
 }
 
+variable "node_link" {
+  description = "The link between the nodes: the vSwitch `cluster` (docs/zones.md, vSwitches)."
+  type = object({
+    vlan = number
+    cidr = string
+    mtu  = number
+  })
+
+  validation {
+    condition     = var.node_link.vlan >= 4000 && var.node_link.vlan <= 4091
+    error_message = "node_link.vlan: between 4000 and 4091, the range of Hetzner's vSwitches."
+  }
+
+  validation {
+    condition     = var.node_link.mtu <= 1400
+    error_message = "node_link.mtu: 1400 at most, what a vSwitch carries."
+  }
+}
+
+variable "node_links" {
+  description = "Every node's NIC and address on the link, keyed by node name, `nodes` or not: the datacenter's `management` set holds all of them."
+  type = map(object({
+    nic     = string
+    address = string
+  }))
+
+  validation {
+    condition     = alltrue([for l in values(var.node_links) : cidrcontains(var.node_link.cidr, l.address)])
+    error_message = "Every node_links address must sit inside node_link.cidr."
+  }
+
+  validation {
+    condition     = length(distinct([for l in values(var.node_links) : l.address])) == length(var.node_links)
+    error_message = "No two nodes may share a node_links address."
+  }
+
+  validation {
+    condition     = alltrue([for n in var.nodes : contains(keys(var.node_links), n)])
+    error_message = "Every node of `nodes` needs an entry in node_links."
+  }
+}
+
 variable "sdn_zone_id" {
   description = "ID of the SDN Simple zone holding every zone."
   type        = string

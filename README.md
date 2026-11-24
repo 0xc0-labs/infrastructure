@@ -151,8 +151,9 @@ arrives with the cluster. Until then:
   `/etc/ssh/sshd_config.d/10-key-only.conf`. `installimage` already leaves
   `root` with no password, so nobody signs in to the web interface with one.
 - `LISTEN_IP="127.0.0.1"` in `/etc/default/pveproxy` (step 2): 8006 and 3128
-  answer on the host only. It is removed when the cluster is formed, which
-  needs the API between the nodes.
+  answer on the host only. It is removed before the cluster is formed, which
+  needs the API between the nodes: [Forming the cluster](#forming-the-cluster),
+  step 3.
 - `rpcbind` disabled (step 2): nothing uses NFS, and an open port 111 on a
   public address draws abuse reports.
 
@@ -174,9 +175,87 @@ to a node without them.
 
 ### 5. Not before the join
 
-Creating or joining a cluster, any guest (a node joins empty), Docker, PBS,
+Creating or joining a cluster ([Forming the cluster](#forming-the-cluster)),
+any guest (a node joins empty), Docker, PBS,
 Traefik. The vSwitches the node is attached to are in
 [`docs/zones.md`](docs/zones.md#vswitches).
+
+## Forming the cluster
+
+How `pve-1` and `pve-2` become one Proxmox cluster, named `cluster`: two nodes,
+no QDevice, no HA. `pve-1` holds 2 votes and `pve-2` 1, so `pve-1` keeps quorum
+alone. One corosync link, on the vSwitch `cluster`
+([`docs/zones.md`](docs/zones.md#vswitches)): a second one, on the public
+addresses, would ride the same NIC and need the last free rule of each server's
+firewall in Robot. The operator runs every step, in order; nothing is applied
+from a pipeline but step 2.
+
+Before it: both nodes at the same `pve-manager` (`pveversion`) and corosync
+(`corosync -v`): bring the one behind level first. A kernel waiting for a
+reboot does not stop a join.
+
+1. **Forwarding, on a node that routes for the zones** (`pve-1`, which
+   holds the zones' gateway and SNAT; a node whose guests reach them over the
+   vSwitch needs none). Why:
+   [`docs/architecture.md`](docs/architecture.md#the-node).
+
+   ```
+   echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/90-ip-forward.conf
+   sysctl --system
+   ```
+
+   Seen: `sysctl net.ipv4.ip_forward` gives `1`, and still would without
+   Docker.
+
+2. **Approve the apply** of the PR that holds `node_link` and `node_links`. It
+   makes `eno1.4000` on each node of `nodes`, and the datacenter's `management`
+   set. Seen, on `pve-1`: `ip -br addr show eno1.4000` gives `10.20.0.1/24`,
+   the interface is in `/etc/network/interfaces`, and `pve-firewall status` is
+   `enabled/running`. From `pve-2`: `nc -vz 10.20.0.1 22` answers.
+
+3. **On `pve-2`, leave it empty**: no guest, so remove what a rehearsal left
+   (`qm list`, the SDN zones in `/etc/pve/sdn`, test users, roles and tokens in
+   `pveum`, any `/etc/sysctl.d/90-*-forward.conf`), and the `LISTEN_IP` line of
+   `/etc/default/pveproxy`, then:
+
+   ```
+   systemctl restart pveproxy
+   ```
+
+   Seen: `qm list` is empty, and `ss -tlnp` no longer shows 8006 on loopback
+   alone.
+
+4. **On each node, its name on its link address**, the address the other node
+   uses for the API, SSH and migration, and the one Hetzner's firewall and the
+   set admit. In `/etc/hosts`, the lines of the node's name become
+   `10.20.0.1 pve-1` (`pve-2`: `10.20.0.2 pve-2`). Then:
+
+   ```
+   systemctl restart pve-cluster pvedaemon pveproxy pvestatd
+   pvecm updatecerts --force
+   ```
+
+   Seen: `hostname --ip-address` gives the link address. Do it on `pve-1`
+   first.
+
+5. **On `pve-1`, create the cluster:**
+
+   ```
+   pvecm create cluster --link0 10.20.0.1 --votes 2
+   ```
+
+6. **On `pve-2`, join it.** It asks for `pve-1`'s `root` password, which only
+   the operator types.
+
+   ```
+   pvecm add 10.20.0.1 --link0 10.20.0.2
+   ```
+
+7. **See it:** `pvecm status` on both nodes gives `Expected votes: 3`,
+   `Total votes: 3` and `Quorate: Yes`, and `ssh 10.20.0.2 hostname` from
+   `pve-1` prints `pve-2`. **From this moment `pve-2`'s SSH on its public
+   address is closed**, until its node rules apply (the next change of the
+   cluster's rollout): it is reached over the link.
 
 ## gVisor on vm-rke2-04
 

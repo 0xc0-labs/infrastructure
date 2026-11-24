@@ -36,6 +36,11 @@ variable "node_admin" {
   })
 }
 
+variable "node_links" {
+  description = "Every node's address on the link between the nodes, keyed by node name, a node of `nodes` or not. They become the datacenter's `management` set."
+  type        = map(string)
+}
+
 variable "node_enabled" {
   description = "The node's own firewall: DROP on everything but its rules. Needs `enabled` too."
   type        = bool
