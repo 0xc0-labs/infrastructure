@@ -64,6 +64,14 @@ every zone is still the SDN VNet described above, on `pve-1` alone
 (`sdn_nodes`). Hetzner's firewall filters the vSwitches too
 ([`architecture.md`](architecture.md#the-node)).
 
+**Every guest is at MTU 1400**, because a vSwitch carries no more. It is set on
+the guest's NIC (`mtu` of `modules/vm` and `modules/cloud-image-template`, from
+`node_link.mtu`), and the guest takes it as its maximum when its VM starts,
+with nothing set inside it. A guest left at 1500 behind a route at 1400 sends
+packets the route drops, and TCP's segment size does not cover them all: on
+2026-11-24, `pve-1`'s bridges were given their vSwitch port at 1400 while the
+guests were still at 1500, and it had to be undone (#284).
+
 ## Machines
 
 What exists is the `vms` map in `terraform.tfvars`, and `cluster` for the RKE2

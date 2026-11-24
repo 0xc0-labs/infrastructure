@@ -14,6 +14,7 @@ module "load_balancers" {
   datastore_id   = var.datastore_id
 
   vnet         = var.vnet
+  mtu          = var.mtu
   ipv4_address = "${each.value.ip}/${local.prefix_length}"
   ipv4_gateway = local.gateway
   dns_servers  = var.dns_servers
@@ -39,6 +40,7 @@ module "servers" {
   cpu_type       = var.servers.cpu_type
 
   vnet         = var.vnet
+  mtu          = var.mtu
   ipv4_address = "${each.value.ip}/${local.prefix_length}"
   ipv4_gateway = local.gateway
   dns_servers  = var.dns_servers
@@ -65,6 +67,7 @@ module "agents" {
   cpu_type       = var.agents.cpu_type
 
   vnet         = var.vnet
+  mtu          = var.mtu
   ipv4_address = "${each.value.ip}/${local.prefix_length}"
   ipv4_gateway = local.gateway
   dns_servers  = var.dns_servers

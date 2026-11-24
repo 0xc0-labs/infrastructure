@@ -13,6 +13,16 @@ variable "vnet" {
   type        = string
 }
 
+variable "mtu" {
+  description = "Every VM's NIC MTU, which the guest takes as its maximum when the VM starts. A vSwitch carries 1400 at most, so no guest may be wider than that."
+  type        = number
+
+  validation {
+    condition     = var.mtu >= 576 && var.mtu <= 1400
+    error_message = "mtu: between 576 and 1400, what a vSwitch carries."
+  }
+}
+
 variable "cidr" {
   description = "The zone's CIDR: every address is inside it, and the host's .1 is the gateway."
   type        = string

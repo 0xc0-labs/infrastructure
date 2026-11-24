@@ -53,6 +53,7 @@ No modules.
 | <a name="input_ipv4_address"></a> [ipv4\_address](#input\_ipv4\_address) | Static address in CIDR notation, inside the zone, e.g. 10.10.0.10/24. | `string` | n/a | yes |
 | <a name="input_ipv4_gateway"></a> [ipv4\_gateway](#input\_ipv4\_gateway) | Gateway: the host, on the zone's .1. | `string` | n/a | yes |
 | <a name="input_memory_mb"></a> [memory\_mb](#input\_memory\_mb) | Memory in MB. | `number` | `1024` | no |
+| <a name="input_mtu"></a> [mtu](#input\_mtu) | The NIC's MTU, which the guest takes as its maximum when the VM starts. A vSwitch carries 1400 at most, so no guest may be wider than that. | `number` | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | VM name, e.g. vm-access-01. | `string` | n/a | yes |
 | <a name="input_node_name"></a> [node\_name](#input\_node\_name) | Proxmox node. | `string` | n/a | yes |
 | <a name="input_rebuild"></a> [rebuild](#input\_rebuild) | Bump to recreate the VM, keeping everything else as it is. | `number` | `0` | no |

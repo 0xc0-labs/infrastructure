@@ -36,6 +36,7 @@ module "templates" {
   image_checksum_algorithm = each.value.checksum_algorithm
   disk_size_gb             = each.value.disk_size_gb
   bridge                   = each.value.bridge
+  mtu                      = var.node_link.mtu
 
   # The default bridge is one of the SDN VNets.
   depends_on = [module.sdn]
@@ -212,6 +213,7 @@ module "vms" {
   datastore_id   = var.template_datastore
 
   vnet         = each.value.vnet
+  mtu          = var.node_link.mtu
   ipv4_address = "${each.value.ip}/${split("/", var.zones[each.value.vnet].cidr)[1]}"
   ipv4_gateway = cidrhost(var.zones[each.value.vnet].cidr, 1)
   dns_servers  = var.vm_dns_servers
@@ -234,6 +236,7 @@ module "cluster" {
   node_name    = var.nodes[0]
   datastore_id = var.template_datastore
   vnet         = var.cluster.vnet
+  mtu          = var.node_link.mtu
   cidr         = var.zones[var.cluster.vnet].cidr
   dns_servers  = var.vm_dns_servers
 

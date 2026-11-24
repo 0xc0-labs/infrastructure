@@ -196,7 +196,10 @@ missing:
   self-loops the diagram does not draw. They are still entries of the matrix,
   `platform -> platform`.
 
-The pod network's MTU follows the guests': canal's `calico.vethuMTU`, set by
+Every guest's NIC is at MTU 1400, set from `node_link.mtu` and taken by the
+guest when its VM starts: a vSwitch carries no more, and a guest at 1500 behind
+a 1400 route loses whatever TCP's segment size does not cover
+([`zones.md`](zones.md#vswitches)). The pod network's MTU follows the guests': canal's `calico.vethuMTU`, set by
 the `rke2_server` role, is 1350, the guests' 1400 minus VXLAN's 50 bytes. A
 pod keeps the MTU it was created with until it is recreated.
 
