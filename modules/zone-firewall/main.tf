@@ -131,7 +131,7 @@ resource "proxmox_virtual_environment_firewall_options" "main" {
   node_name = var.node_names[0]
   vm_id     = each.value.vm_id
 
-  enabled      = true
+  enabled       = true
   input_policy  = "DROP"
   output_policy = contains(local.no_egress, each.value.vnet) ? "DROP" : "ACCEPT"
   macfilter     = true
