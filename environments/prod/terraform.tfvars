@@ -179,6 +179,7 @@ transit = [
   { from = "platform", to = ["node"], ports = [9100], note = "node metrics" },
   { from = "platform", to = ["internet"], ports = [443], note = "egress, alerts to the phone among it" },
   { from = "internet", to = ["node"], ports = [22], note = "break-glass SSH, key-only; the Hetzner firewall keeps it closed until opened" },
+  { from = "nodes", to = ["node"], ports = [8007], note = "PBS on pve-1's host, for the guests of the other nodes" },
 ]
 
 # From the admin zones the node admits only these ports, whatever an entry

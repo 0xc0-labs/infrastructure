@@ -46,6 +46,11 @@ variable "node_links" {
   type        = map(string)
 }
 
+variable "node_link_cidr" {
+  description = "The link between the nodes, as a CIDR. It is the source of a transit entry whose `from` is `nodes`."
+  type        = string
+}
+
 variable "node_enabled" {
   description = "The node's own firewall: DROP on everything but its rules. Needs `enabled` too."
   type        = bool

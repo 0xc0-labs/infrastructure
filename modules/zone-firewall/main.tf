@@ -1,6 +1,7 @@
 locals {
   vnet_of = { for vnet, z in var.zones : z.alias => vnet }
-  cidr_of = { for vnet, z in var.zones : z.alias => z.cidr }
+  # `nodes` is the link between the nodes: an entry from it admits every node.
+  cidr_of = merge({ for vnet, z in var.zones : z.alias => z.cidr }, { nodes = var.node_link_cidr })
 
   # Proxmox writes port ranges as a:b.
   dport = [for e in var.transit : join(",", [for p in e.ports : replace(p, "-", ":")])]

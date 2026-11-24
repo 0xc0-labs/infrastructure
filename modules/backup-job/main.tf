@@ -1,6 +1,5 @@
 resource "proxmox_backup_job" "main" {
   id       = var.id
-  node     = var.node_name
   storage  = var.storage
   schedule = var.schedule
   vmid     = [for id in var.vm_ids : tostring(id)]

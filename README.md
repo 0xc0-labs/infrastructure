@@ -259,19 +259,22 @@ reboot does not stop a join.
 
 8. **Approve the apply** of the PR that puts `pve-2` in `nodes` (#277). It
    gives the joined node its firewall options and the same rules as `pve-1`.
-   On `pve-2`, reached from `pve-1` (`ssh 10.20.0.2`), start the firewall the
-   rehearsal left stopped, and check it:
+   On `pve-2`, reached from `pve-1` (`ssh 10.20.0.2`), check that its firewall
+   runs, and start it if it does not:
 
    ```
    systemctl start pve-firewall
    pve-firewall status
    ```
 
-   Seen: `enabled/running`, `/etc/pve/nodes/pve-2/host.fw` holds the five
-   rules, and `pve-2`'s SSH answers again on its public address. Restrict the
-   PBS storage, which runs on `pve-1`'s host, to it (`storage.cfg` is the
-   cluster's now): `pvesm set sbox --nodes pve-1`. Seen: `pvesm status` on
-   `pve-2` no longer lists `sbox`.
+   Seen: `enabled/running`, `/etc/pve/nodes/pve-2/host.fw` holds the node's
+   rules, and `pve-2`'s SSH answers again on its public address.
+
+9. **Point the PBS storage at the link**, once the apply of the PR that admits
+   8007 from the nodes' link has run (`storage.cfg` is the cluster's):
+   `pvesm set sbox --server 10.20.0.1 --delete nodes`. Seen: `pvesm status`
+   shows `sbox` active on both nodes. The daily job, which names no node, then
+   backs up each node's guests to it.
 
 ## gVisor on vm-rke2-04
 
