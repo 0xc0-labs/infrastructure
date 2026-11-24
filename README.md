@@ -168,6 +168,12 @@ After it, check with `ss -tlnp` that only 22 listens on the public address.
 - **Hetzner's firewall**, in Robot: the same incoming rules as the other
   nodes, ending in `deny all`, and the two rules for the private ranges. Why
   they are needed: [`docs/architecture.md`](docs/architecture.md#the-node).
+- **No pending network file.** After `proxmox-ve` is installed, and after any
+  network line written by hand, check for `/etc/network/interfaces.new`. If the
+  install left one, move it aside before the first apply. The API shows the
+  pending file instead of the live one, so the provider would miss what was
+  written by hand, and an apply that reloads the network would load the pending
+  file without it. Seen: `pvesh get /nodes/<node>/network` lists `eno1.4000`.
 
 [`docs/architecture.md`](docs/architecture.md#the-node) describes both nodes:
 `pve-2` routes for the zones and runs PBS; `pve-1` has neither. A
@@ -318,7 +324,12 @@ order:
    with its link address (`10.20.0.1/24`, MTU 1400), and `/etc/hosts` with
    the link address and the name alone, no IPv6 line for it. Then
    `systemctl restart pve-cluster pvedaemon pveproxy pvestatd` and
-   `pvecm updatecerts --force`.
+   `pvecm updatecerts --force`. Check for `/etc/network/interfaces.new`, which
+   the install of `proxmox-ve` can leave from before these lines, and move it
+   aside (2026-11-25: `/root/interfaces.new.from-install`): the API shows the
+   pending file instead of the live one, so the provider would miss
+   `eno1.4000`, and an apply that reloads the network would load that file
+   without it. Seen: `pvesh get /nodes/<node>/network` lists `eno1.4000`.
 5. **Join.** Put the node's new `root` key in the cluster's `authorized_keys`
    and take the old one out, remove the `LISTEN_IP` line, then, on the node:
 
