@@ -92,10 +92,22 @@ it entered `nodes` (#277). The other three carry the zones, as bridges
 **Every guest is at MTU 1400**, because a vSwitch carries no more. It is set on
 the guest's NIC (`mtu` of `modules/vm` and `modules/cloud-image-template`, from
 `node_link.mtu`), and the guest takes it as its maximum when its VM starts,
-with nothing set inside it. A guest left at 1500 behind a route at 1400 sends
-packets the route drops, and TCP's segment size does not cover them all: on
-2026-11-24, `pve-1`'s bridges were given their vSwitch port at 1400 while the
-guests were still at 1500, and it had to be undone (#284).
+with nothing set inside it. On 2026-11-24, `pve-1`'s bridges were given their
+vSwitch port at 1400 while the guests were still at 1500, and it had to be
+undone (#284). Two things broke, and each needs its own fix:
+
+- A guest left at 1500 behind a route at 1400 sends packets the route drops,
+  and the node's MSS clamp covers TCP handshakes only
+  ([`architecture.md`](architecture.md#the-node)). Putting every guest at 1400
+  fixed it.
+- A guest's NIC at 1400 limits what the guest sends, not what it is sent. The
+  Cloudflare tunnels are QUIC over UDP, which the clamp does not reach:
+  Cloudflare's edge had sized its packets for a 1500 path and kept sending them
+  after the route narrowed. The tunnels stayed up on small packets and carried
+  nothing large, such as an SSH key exchange. `pve-1` counted the drops:
+  `nstat IpFragFails` rose about seven a second. Restarting `cloudflared` on
+  the four VMs that run it ended it at once, since a tunnel opened on the
+  narrower path sizes itself for it (README, Changing a guest's NIC).
 
 ## Machines
 
