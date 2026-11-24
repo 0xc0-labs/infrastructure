@@ -118,7 +118,8 @@ undone (#284). Two things broke, and each needs its own fix:
 What exists is the `vms` map in `terraform.tfvars`, `cluster` for the RKE2
 nodes and their load balancers, and `containers` for the LXC containers. Each
 machine names the Proxmox node it runs on, its `node`, which must be one of
-`nodes` **(code)**; every one says `pve-1` today, but `ct-base-01`, on `pve-2`.
+`nodes` **(code)**; every one says `pve-2` while `pve-1` is away, and `pve-1` takes its share back
+once it has rejoined (workspace#285).
 A guest moves between nodes live, with its disks, over the link, and the
 `node` is changed only after the move ([`architecture.md`](architecture.md#the-node)).
 The addressing plan, so that no address is handed out twice:

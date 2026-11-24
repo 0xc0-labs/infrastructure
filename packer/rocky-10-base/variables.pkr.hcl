@@ -18,7 +18,7 @@ variable "proxmox_token" {
 variable "node" {
   description = "Proxmox node the build VM runs on."
   type        = string
-  default     = "pve-1"
+  default     = "pve-2"
 }
 
 variable "commit" {
