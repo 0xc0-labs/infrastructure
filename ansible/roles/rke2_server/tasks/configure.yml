@@ -49,3 +49,20 @@
     mode: "0600"
   no_log: true
   notify: Restart rke2-server
+
+# On a first run RKE2 has not started yet, so it has not created it.
+- name: Create the manifests directory
+  ansible.builtin.file:
+    path: "{{ rke2_server_manifests_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write the pod network's chart values
+  ansible.builtin.template:
+    src: rke2-canal-config.yaml.j2
+    dest: "{{ rke2_server_manifests_dir }}/rke2-canal-config.yaml"
+    owner: root
+    group: root
+    mode: "0600"

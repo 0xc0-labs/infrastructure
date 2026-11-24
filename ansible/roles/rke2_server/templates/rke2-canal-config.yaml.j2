@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# The chart writes calico.vethuMTU as a fixed number, 1450 by default, while
+# flannel sizes its own tunnel from the node's interface. A pod keeps the MTU
+# it was created with until it is recreated.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: rke2-canal
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    calico:
+      vethuMTU: {{ rke2_server_canal_veth_mtu }}

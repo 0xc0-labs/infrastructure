@@ -196,6 +196,10 @@ missing:
   self-loops the diagram does not draw. They are still entries of the matrix,
   `platform -> platform`.
 
+The pod network's MTU follows the guests': canal's `calico.vethuMTU`, set by
+the `rke2_server` role, is 1350, the guests' 1400 minus VXLAN's 50 bytes. A
+pod keeps the MTU it was created with until it is recreated.
+
 The node accepts 22, 443 and 8006 from `mgmt`, 443 and 8006 from `ci`, and the
 node-metrics scrape (9100) from `platform`. From the internet it accepts only
 SSH, as break-glass for when WARP is down: the Hetzner firewall keeps it

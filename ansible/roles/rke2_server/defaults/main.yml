@@ -7,3 +7,6 @@ rke2_server_channel: stable
 rke2_server_ingress_controller: none
 
 rke2_server_tls_san: []
+
+# The guests' 1400 minus VXLAN's 50 bytes of header.
+rke2_server_canal_veth_mtu: 1350
