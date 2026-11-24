@@ -41,10 +41,11 @@ zones = {
   }
 }
 
-# Each node's address in each zone it routes for: pve-1's is every zone's
-# gateway. pve-2 has none until its first guest.
+# Each node's address in each zone it routes for. pve-2 routes for every zone
+# while pve-1 is away; the role goes back to pve-1 once it has rejoined
+# (workspace#285).
 zone_gateways = {
-  "pve-1" = { mgmt = "10.10.0.1", ci = "10.10.1.1", platform = "10.10.4.1" }
+  "pve-2" = { mgmt = "10.10.0.1", ci = "10.10.1.1", platform = "10.10.4.1" }
 }
 
 template_datastore = "local"
@@ -151,8 +152,8 @@ containers = {
   }
 }
 
-# Enforces every VM's firewall. Needs Docker on the node with
-# `ip-forward-no-drop` (docs/architecture.md, The node).
+# Enforces every VM's firewall. Needs the routing node's FORWARD policy at
+# ACCEPT, its default where there is no Docker (docs/architecture.md, The node).
 datacenter_firewall_enabled = true
 
 # The Hetzner Rescue system is the way back in.
@@ -217,7 +218,7 @@ transit = [
   { from = "platform", to = ["node"], ports = [9100], note = "node metrics" },
   { from = "platform", to = ["internet"], ports = [443], note = "egress, alerts to the phone among it" },
   { from = "internet", to = ["node"], ports = [22], note = "break-glass SSH, key-only; the Hetzner firewall keeps it closed until opened" },
-  { from = "nodes", to = ["node"], ports = [8007], note = "PBS on pve-1's host, for the guests of the other nodes" },
+  { from = "nodes", to = ["node"], ports = [8007], note = "PBS on the host that routes for the zones, for the guests of the other nodes" },
   { from = "ci", to = ["node"], ports = [8007], sources = ["ct-base-01"], note = "Traefik in ct-base-01 towards PBS on the host" },
 ]
 

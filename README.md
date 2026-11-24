@@ -169,9 +169,9 @@ After it, check with `ss -tlnp` that only 22 listens on the public address.
   nodes, ending in `deny all`, and the two rules for the private ranges. Why
   they are needed: [`docs/architecture.md`](docs/architecture.md#the-node).
 
-[`docs/architecture.md`](docs/architecture.md#the-node) describes `pve-1`,
-which also runs Docker and PBS. Those paragraphs do not apply to a node
-without them.
+[`docs/architecture.md`](docs/architecture.md#the-node) describes both nodes:
+`pve-2` routes for the zones and runs PBS, `pve-1` still has Docker. A
+paragraph about one does not apply to a node without it.
 
 ### 5. Not before the join
 
@@ -194,7 +194,7 @@ Before it: both nodes at the same `pve-manager` (`pveversion`) and corosync
 (`corosync -v`): bring the one behind level first. A kernel waiting for a
 reboot does not stop a join.
 
-1. **Forwarding, on a node that routes for the zones** (`pve-1`, which
+1. **Forwarding, on a node that routes for the zones** (`pve-2` today, which
    holds the zones' gateway and SNAT; a node whose guests reach them over the
    vSwitch needs none). Why:
    [`docs/architecture.md`](docs/architecture.md#the-node).
@@ -274,10 +274,12 @@ reboot does not stop a join.
    8007 from the nodes' link has run (before it, another node does not reach
    PBS). `server` is a fixed parameter of a PBS storage, so `pvesm set`
    refuses to change it. Edit the `server` line of `pbs: sbox` in
-   `/etc/pve/storage.cfg`, the cluster's file, then drop the node restriction:
+   `/etc/pve/storage.cfg`, the cluster's file, then drop the node restriction.
+   It was `10.20.0.1` while PBS ran on `pve-1`; PBS is on `pve-2` now, so it is
+   `10.20.0.2`:
 
    ```
-   sed -i -E 's/^([[:space:]]+server) 127\.0\.0\.1$/\1 10.20.0.1/' /etc/pve/storage.cfg
+   sed -i -E 's/^([[:space:]]+server) 127\.0\.0\.1$/\1 10.20.0.2/' /etc/pve/storage.cfg
    pvesm set sbox --delete nodes
    pvesm status
    ```
@@ -289,8 +291,14 @@ reboot does not stop a join.
     makes, on every node of `nodes`, the VLAN interface of each zone and the
     bridge named as the zone over it (`modules/zone-bridge`), at MTU 1400. A
     new node gets them by entering `nodes`, layer 2 only, with no address.
-    It routes for a zone only with an entry in `zone_gateways`, given with
-    its first guest.
+    It routes for a zone only with an entry in `zone_gateways`, which `pve-2`
+    has today. What the routing node holds besides the bridges' `.1` is written
+    by hand in its `/etc/network/interfaces`, outside the provider's resources,
+    which keep those lines: the SNAT to its public address, the conntrack zone
+    rule and, in the `eno1` stanza, the MSS clamp
+    ([`docs/zones.md`](docs/zones.md#zones),
+    [`docs/architecture.md`](docs/architecture.md#the-node)).
+    `pve-1`'s bridges are layer 2 only.
 
 ## Changing a guest's NIC
 
@@ -415,5 +423,7 @@ To add or remove a viewer, in Cloudflare: Zero Trust → Access → Access group
 → the group → edit its emails. No apply is needed: OpenTofu ignores the group's
 members and owns everything else (`modules/access-app/README.md`).
 
-The PBS running on the node, and the Docker beside it, are **not** managed
-here. Traefik and RustFS are, in `ct-base-01`.
+The PBS running on `pve-2`'s host, with the Storage Box mounted at `/mnt/pbs`,
+and `pve-1`'s stopped Docker, are **not** managed here. Traefik and RustFS
+are, in `ct-base-01`. The `sbox` storage is `server 10.20.0.2`, in
+`/etc/pve/storage.cfg`.

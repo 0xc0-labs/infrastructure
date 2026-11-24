@@ -11,20 +11,23 @@ disagrees with the code or with the design, they win.
 
 ## The node
 
-One Hetzner dedicated server, `pve-1` (`pve.0xc0.cc`): Proxmox VE 9, 12 CPU,
-62 GB RAM, two NVMe disks in mdadm RAID 0.
+Two Hetzner dedicated servers, Proxmox VE 9. `pve-1` (`pve.0xc0.cc`): 12 CPU,
+62 GB RAM, two NVMe disks in mdadm RAID 0, to be reinstalled with RAID 1.
+`pve-2`: two NVMe disks in mdadm RAID 1.
 
-It is one of two nodes of a Proxmox cluster named `cluster`, with `pve-2`: no
+They are the two nodes of a Proxmox cluster named `cluster`: no
 QDevice and no HA, `pve-1` with 2 votes and `pve-2` with 1, so `pve-1` keeps
 quorum alone. They talk over one corosync link on the vSwitch `cluster`
 (`10.20.0.1` and `10.20.0.2`, [`zones.md`](zones.md#vswitches)), and both are in
 `nodes`, each with its link interface and the same firewall rules from this
 root. Every machine, VM and template names the node it runs on, its `node` in
-`terraform.tfvars`: today all of them say `pve-1`, which runs every VM, the
-templates and the backups, and it alone holds the zones' gateway and SNAT
-(`zone_gateways`). `pve-2` has no VM, and the zones' bridges on it are layer 2
-only. PBS runs on `pve-1`'s host, so its `sbox` storage is reached over the
-link, on `10.20.0.1`. The rest of this section is `pve-1`.
+`terraform.tfvars`: today all of them but `ct-base-01` say `pve-1`, which runs
+every VM and the templates. `pve-2` alone holds the zones' gateway and SNAT
+(`zone_gateways`) and runs PBS, while `pve-1` is away; `pve-1`'s bridges are
+layer 2 only. The `sbox` storage is `server 10.20.0.2`, `pve-2`'s link address,
+which both nodes reach. `pve-1` takes the role back once it has been
+reinstalled with RAID 1 and rejoined (workspace#285). The rest of this section
+says which node each paragraph is about.
 
 **Containers.** Beside the VMs there are LXC containers, the `containers` map in
 `terraform.tfvars` (`modules/container`): unprivileged, in a zone like any
@@ -50,7 +53,7 @@ only from shared storage.
 flowchart TB
   internet(("Internet"))
 
-  subgraph host["pve-1 — Hetzner dedicated"]
+  subgraph host["pve-2 — Hetzner dedicated, routes for the zones"]
     eno1["eno1<br/>public IP"]
 
     subgraph base["On the host — outside IaC"]
@@ -78,44 +81,43 @@ flowchart TB
   zones -- "SNAT" --> eno1 --> internet
 ```
 
-- **Base services** — PBS runs on the host itself, not managed by any repo in
-  this org, and nothing here may touch it. Traefik and RustFS run in
+- **Base services** — PBS runs on `pve-2`'s host, with the Storage Box mounted
+  there at `/mnt/pbs`; it is not managed by any repo in this org, and nothing
+  here may touch it. On `pve-1` it is stopped and disabled. Traefik and RustFS run in
   `ct-base-01`, managed here: OpenTofu makes the container and Ansible
   configures what is inside it. That Traefik is only the reverse proxy of the
   Proxmox UI, PBS and RustFS; it is not the application ingress.
-- **Disks** — RAID 0, by decision: there is no redundancy on the node. One
-  NVMe failure loses it, and recovery is a reinstall plus a restore from PBS
-  on the Storage Box.
+- **Disks** — `pve-1` is RAID 0, by decision: no redundancy, so one NVMe
+  failure loses it, and recovery is a reinstall plus a restore from PBS on the
+  Storage Box. It is to be reinstalled with RAID 1. `pve-2` is RAID 1.
 - **`eno1`** keeps the public IP. Guests never attach to it: Hetzner drops
-  unknown MACs on the public interface. They live on the zones' bridges, and reach
-  the internet through SNAT on the host.
-- **Docker** still runs the Traefik and RustFS that `ct-base-01` replaced,
-  stopped by hand, and is configured by hand, outside IaC,
-  with one setting the zone firewall depends on. `/etc/docker/daemon.json`:
-
-  ```json
-  {"ip-forward-no-drop": true}
-  ```
-
-  Without it Docker sets the `FORWARD` policy to DROP. The Proxmox firewall
-  explicitly accepts only traffic *into* a VM. It leaves traffic *out of* a
-  VM, and the hop across a zone bridge, to that policy, so every VM loses its
-  egress and its peers (tested in
-  [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). On a
-  reinstalled node, write that file, restart Docker and run
-  `iptables -P FORWARD ACCEPT` **before** the first apply.
+  unknown MACs on the public interface. They live on the zones' bridges, and
+  reach the internet through the SNAT on `pve-2`, to `142.132.139.52`.
+- **The gateway**, by hand, on the node that routes for the zones, `pve-2`: in
+  `/etc/network/interfaces` each zone's bridge is `inet static` with the `.1`
+  and, for the zone, the SNAT and the conntrack zone rule (`zones.md`, Zones).
+  The provider's resources keep those lines when they rewrite the file. On
+  `pve-1` the bridges are `inet manual`, with the conntrack zone rule alone.
+- **Docker** is on `pve-1` only, stopped: Traefik and RustFS moved to
+  `ct-base-01`, and Docker goes when `pve-1` is reinstalled. `pve-2` has none.
+  The zone firewall needs the routing node's `FORWARD` policy at ACCEPT. The
+  Proxmox firewall explicitly accepts only traffic *into* a VM. It leaves
+  traffic *out of* a VM, and the hop across a zone bridge, to that policy, so
+  a DROP takes every VM's egress and its peers (tested in
+  [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). Docker sets
+  DROP unless `/etc/docker/daemon.json` has `{"ip-forward-no-drop": true}`;
+  `pve-2`, with no Docker, has ACCEPT by default.
 - **Forwarding**, also by hand, on a node that routes for the zones. Only the
   zones' bridges forward by themselves; the replies come in
   through `eno1`, whose forwarding follows `net.ipv4.ip_forward`, and no file
   sets it (Hetzner's `99-hetzner.conf` has it commented out). Without it a
-  guest has its gateway and no internet. `/etc/sysctl.d/90-ip-forward.conf`:
+  guest has its gateway and no internet. On `pve-2`, `/etc/sysctl.d/90-ip-forward.conf`:
 
   ```
   net.ipv4.ip_forward = 1
   ```
 
-  On `pve-1` Docker has kept it at 1 since it started, switching it on itself;
-  a node with no Docker, `pve-2`, has nothing that does, which a test guest
+  A node with no Docker has nothing else that sets it, which a test guest
   showed on 2026-11-24. The provider cannot write the file and Ansible here
   configures VMs, not nodes.
 - **`eno1`'s offloads**, also by hand: TCP and generic segmentation offload
@@ -156,13 +158,13 @@ flowchart TB
   no TCP connection opened, in either direction. Each server uses 9 of the 10
   incoming rules Hetzner allows.
 
-Some of these bullets hold only for `pve-1`, each for its own reason. The base
-services and Docker, because `pve-1` runs Docker and PBS: they
+Some of these bullets hold only for one node, each for its own reason. PBS, because
+`pve-2` runs it, and Docker, because `pve-1` still has it: they
 do not apply to a node installed without them, as in the README's
-[Adding a node](../README.md#adding-a-node). Disks, because of its RAID level:
-`pve-1` is RAID 0, and `pve-2` is RAID 1. The forwarding is only for the node
-that routes for the zones, `pve-1`: the gateway and SNAT are its own, and a
-guest on another node reaches them over the vSwitch at layer 2. The offloads
+[Adding a node](../README.md#adding-a-node). Disks, because of the RAID level.
+The forwarding is only for the node that routes for the zones, `pve-2`: the
+gateway and SNAT are its own, and a guest on another node reaches them over
+the vSwitch at layer 2. The offloads
 apply to any node whose NIC's driver is `e1000e`, and Hetzner's firewall to
 every node. The MSS clamp is for the node that routes for the zones. All of
 them are set by hand.
@@ -201,8 +203,8 @@ bumping its `rebuild` counter.
 ## Zones
 
 Each zone is a Linux bridge over its Hetzner vSwitch on both nodes, with a
-gateway `.1` that is the host, `pve-1`
-([`zones.md`](zones.md#zones)). The host routes between zones and applies the firewall; everything
+gateway `.1` that is the routing node's, `pve-2`
+([`zones.md`](zones.md#zones)). That host routes between zones and applies the firewall; everything
 not listed in the transit matrix is denied.
 
 ```mermaid
@@ -212,7 +214,7 @@ flowchart LR
     ci["ci<br/>10.10.1.0/24<br/>vm-ci-01 .10<br/>vm-ci-02 .20"]
   end
   platform["platform<br/>10.10.4.0/24<br/>VIP .10 · internal VIP .9<br/>vm-lb-01 .11 · vm-lb-02 .12<br/>vm-rke2-01/02/03 .21-.23 · vm-rke2-04 .24"]
-  node["node<br/>pve-1"]
+  node["node<br/>pve-2, the routing host"]
   internet(("internet"))
 
   mgmt -- "22" --> ci
@@ -398,8 +400,8 @@ flowchart LR
 
 PBS on the host backs every VM up whole, data disks included, daily, to a
 datastore on the Hetzner Storage Box (`backup` in `terraform.tfvars`, module
-`backup-job`). There is one PBS, on `pve-1`'s host, and every node reaches it
-on `10.20.0.1`: the job names no node, so each node backs up the guests of its
+`backup-job`). There is one PBS, on `pve-2`'s host, and every node reaches it
+on `10.20.0.2`: the job names no node, so each node backs up the guests of its
 list that live on it. With RAID 0 on the node, a restore from it is the recovery
 plan, so it is **timed and written down**: a restore that has not been timed
 does not count as tested.

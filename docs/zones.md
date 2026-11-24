@@ -12,10 +12,12 @@ addressing plan, and the invariants.
 Each zone is a plain Linux bridge over its Hetzner vSwitch on every node
 (`modules/zone-bridge`): the VLAN interface `eno1.<vlan>` is the bridge's only
 port, both at MTU 1400, and every guest's NIC names the bridge. The gateway is
-`.1`, held by `pve-1` alone (`zone_gateways`), which also does the SNAT for
-egress through `eno1`. A node with no entry in `zone_gateways`, `pve-2` today,
-has the bridge at layer 2 only, and its guests' gateway is `pve-1`'s `.1`
-across the vSwitch. The zones are the `zones` map in `terraform.tfvars`, keyed
+`.1`, held by one node alone (`zone_gateways`): `pve-2`, while `pve-1` is away.
+It also does the SNAT for egress through `eno1`, to its public address
+`142.132.139.52`. A node with no entry in `zone_gateways`, `pve-1` today, has
+the bridge at layer 2 only, and its guests' gateway is `pve-2`'s `.1` across
+the vSwitch. `pve-1` takes the role back once it has been reinstalled with
+RAID 1 and has rejoined (workspace#285). The zones are the `zones` map in `terraform.tfvars`, keyed
 by bridge name (at most 8 letters and digits); `alias` is the name everything
 else uses.
 
@@ -25,10 +27,11 @@ else uses.
 | `ci` | 10.10.1.0/24 | `ci` | 4002 |
 | `platform` | 10.10.4.0/24 | `platform` | 4003 |
 
-The SNAT is four lines in `pve-1`'s bridge stanza of
-`/etc/network/interfaces`, written by hand: the provider's bridge resource has
-no free line, and the API keeps hand-written lines when it rewrites a stanza.
-For `platform`:
+The routing node's SNAT and conntrack zone rule are lines in its bridge stanza
+of `/etc/network/interfaces`, written by hand on `pve-2`: the provider's bridge
+resource has no free line, and the API keeps hand-written lines when it
+rewrites a stanza. The MSS clamp is in its `eno1` stanza
+([`architecture.md`](architecture.md#the-node)). For `platform`:
 
 ```
 auto platform
@@ -38,14 +41,15 @@ iface platform inet static
 	bridge-stp off
 	bridge-fd 0
 	mtu 1400
-	post-up iptables -t nat -A POSTROUTING -s '10.10.4.0/24' -o eno1 -j SNAT --to-source <pve-1's public address>
-	post-down iptables -t nat -D POSTROUTING -s '10.10.4.0/24' -o eno1 -j SNAT --to-source <pve-1's public address>
-	post-up iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-	post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
+	post-up iptables -t nat -C POSTROUTING -s 10.10.4.0/24 -o eno1 -j SNAT --to-source 142.132.139.52 2>/dev/null || iptables -t nat -A POSTROUTING -s 10.10.4.0/24 -o eno1 -j SNAT --to-source 142.132.139.52
+	post-down iptables -t nat -D POSTROUTING -s 10.10.4.0/24 -o eno1 -j SNAT --to-source 142.132.139.52
+	post-up iptables -t raw -C PREROUTING -i fwbr+ -j CT --zone 1 2>/dev/null || iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
 ```
 
-Each reload runs the `post-up` lines again and adds an identical rule; a
-reboot starts from one each. That is left so.
+The `-C` test makes each `post-up` add its rule once however many times the
+network reloads. `pve-1`'s bridges are `inet manual`: no address and no SNAT,
+layer 2 only. The conntrack zone rule stays on `pve-1`, for its guests'
+firewall bridges.
 
 `mgmt` and `ci` together, `10.10.0.0/22`, are the control zones: the only ones
 that reach the node's admin ports. `platform` holds the RKE2 cluster and the
@@ -136,8 +140,8 @@ The addressing plan, so that no address is handed out twice:
 `ct-base-01` is an unprivileged LXC container, Debian 13, 1 core, 1 GiB and 8 GB
 (`modules/container`), the home of the base services: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
 holds the OpenTofu state, and nothing enters `mgmt` from another zone but SSH
-from the CI VMs (invariant 5). Its gateway is `pve-1`'s `.1`, across the
-vSwitch, like every guest's on `pve-2`. Traefik and RustFS run in it, from the
+from the CI VMs (invariant 5). It runs on `pve-2`, which is also its gateway.
+Traefik and RustFS run in it, from the
 pipeline (README, ct-base-01), and the names `pve`, `pbs`, `s3` and
 `s3-console` point at it: WARP's Gateway through `base_service_hostnames`, and
 the CI VMs through their `/etc/hosts`.
@@ -212,8 +216,8 @@ rule in Proxmox always traces back to its line of the matrix.
   Towards `platform`, `ci` gets 22, 6443 and 443: the last one for
   the vault repo's CI, which reaches Vault on the internal VIP (the rule opens
   443 to the whole zone, the VIPs included). From anywhere else, the entry's ports as written: 9100 from
-  `platform`, for the node metrics scrape, and 8007 from `nodes`, PBS on
-  `pve-1`'s host for the guests of the other nodes. `nodes` is not a zone: it
+  `platform`, for the node metrics scrape, and 8007 from `nodes`, PBS on the
+  host that routes for the zones, for the guests of the other nodes. `nodes` is not a zone: it
   is the link between the nodes (`node_link.cidr`), usable as an entry's
   `from`.
 - An entry towards the **internet** is egress, allowed by the outbound policy
@@ -250,7 +254,7 @@ its PR. Those marked **(code)** are also validations in
 6. Every node stays on DROP, with the same rules on each: only 22 and
    8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
    from the internet only SSH as break-glass, closed by the Hetzner firewall
-   until opened **(code)**; and 8007, which is PBS on `pve-1`'s host, from the
+   until opened **(code)**; and 8007, which is PBS on the routing node's host, from the
    link between the nodes and from `ct-base-01` alone. The one
    other ingress is the nodes from each other: the datacenter's `management`
    set holds every address of `node_links`, and Proxmox admits its members to

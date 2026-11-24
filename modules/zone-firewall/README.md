@@ -35,10 +35,11 @@ Why on the NIC and not on the VNet: the node runs `pve-firewall` (iptables).
 VNet-level (forward) rules only exist in the nftables `proxmox-firewall`, which
 the Proxmox docs call a tech preview.
 
-The node's `FORWARD` policy must be ACCEPT, as Proxmox expects: Docker on the
-node runs with `ip-forward-no-drop` (`docs/architecture.md`, The node). With
-Docker's default DROP, every VM loses its egress once the datacenter firewall
-is on.
+The routing node's `FORWARD` policy must be ACCEPT, as Proxmox expects. `pve-2`
+has no Docker, so it is ACCEPT by default, and its forwarding comes from
+`/etc/sysctl.d/90-ip-forward.conf` (`docs/architecture.md`, The node). Docker,
+where it runs, would set DROP, and every VM would lose its egress once the
+datacenter firewall is on.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
