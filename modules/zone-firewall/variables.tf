@@ -8,6 +8,16 @@ variable "node_names" {
   }
 }
 
+variable "node_nics" {
+  description = "Every node's public NIC, keyed by node name. A rule from the internet to the node is bound to it."
+  type        = map(string)
+
+  validation {
+    condition     = alltrue([for n in var.node_names : contains(keys(var.node_nics), n) && try(var.node_nics[n] != "", false)])
+    error_message = "Every node of node_names needs a non-empty public NIC in node_nics: a rule from the internet is never written without its interface."
+  }
+}
+
 variable "enabled" {
   description = "The datacenter firewall's master switch. Nothing below is enforced while it is false."
   type        = bool

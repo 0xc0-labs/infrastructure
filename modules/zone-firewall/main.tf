@@ -39,6 +39,7 @@ locals {
       proto   = e.proto
       source  = local.source[i]
       dport   = join(",", [for p in local.node_ports[i] : replace(p, "-", ":")])
+      public  = e.from == "internet"
       comment = e.note == "" ? "${e.from} -> node" : "${e.from} -> node: ${e.note}"
     } if contains(e.to, "node") && length(local.node_ports[i]) > 0
   ]
@@ -83,11 +84,14 @@ resource "proxmox_virtual_environment_firewall_rules" "node" {
   dynamic "rule" {
     for_each = local.node_rules
     content {
-      type    = "in"
-      action  = "ACCEPT"
-      proto   = rule.value.proto
-      source  = rule.value.source == "" ? null : rule.value.source
-      dport   = rule.value.dport
+      type   = "in"
+      action = "ACCEPT"
+      proto  = rule.value.proto
+      source = rule.value.source == "" ? null : rule.value.source
+      dport  = rule.value.dport
+      # The zones reach a node over its bridges and VLAN interfaces, so an
+      # entry from the internet bound to the public NIC never admits them.
+      iface   = rule.value.public ? var.node_nics[each.key] : null
       comment = rule.value.comment
     }
   }

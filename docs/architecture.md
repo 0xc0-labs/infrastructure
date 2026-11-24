@@ -257,8 +257,9 @@ pod keeps the MTU it was created with until it is recreated.
 
 The node accepts 22 and 8006 from `mgmt`, 8006 from `ci`, and the
 node-metrics scrape (9100) from `platform`; no zone gets 443. From the internet
-it accepts only SSH, as break-glass for when WARP is down: the Hetzner firewall
-keeps it closed until the operator opens it. Traefik, in `ct-base-01`, is
+it accepts only SSH, as break-glass for when WARP is down, on the node's public
+NIC alone, so `ci` and `platform` get no 22: the Hetzner firewall keeps it
+closed until the operator opens it. Traefik, in `ct-base-01`, is
 reached over WARP, where Gateway resolves `base_service_hostnames` to the
 container's address; the CI VMs resolve `s3` and `pve` there through their
 `/etc/hosts`.
