@@ -46,7 +46,7 @@ No resources.
 | <a name="input_servers"></a> [servers](#input\_servers) | The RKE2 servers — control plane, etcd and workloads together: the template, the size, the data disks, and each VM's address. | <pre>object({<br/>    template_vm_id = number<br/>    cpu_type       = string<br/>    cores          = number<br/>    memory_mb      = number<br/>    disk_size_gb   = number<br/>    data_disks_gb  = list(number)<br/>    nodes = map(object({<br/>      ip      = string<br/>      rebuild = number<br/>    }))<br/>  })</pre> | n/a | yes |
 | <a name="input_ssh_public_keys"></a> [ssh\_public\_keys](#input\_ssh\_public\_keys) | Public keys authorised for username. | `list(string)` | n/a | yes |
 | <a name="input_username"></a> [username](#input\_username) | Admin user created by cloud-init; SSH keys only, no password. | `string` | n/a | yes |
-| <a name="input_vnet"></a> [vnet](#input\_vnet) | SDN VNet the whole cluster attaches to — its zone. | `string` | n/a | yes |
+| <a name="input_vnet"></a> [vnet](#input\_vnet) | Bridge the whole cluster attaches to — its zone. | `string` | n/a | yes |
 
 ## Outputs
 

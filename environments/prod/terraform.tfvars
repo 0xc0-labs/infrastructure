@@ -4,10 +4,6 @@
 # backups and the VM firewalls (`var.nodes[0]`).
 nodes = ["pve-1", "pve-2"]
 
-# The zone stays on pve-1, which holds the gateway and SNAT: pve-2 has none of
-# the zones' bridges until they ride the vSwitches.
-sdn_nodes = ["pve-1"]
-
 # The link between the nodes: the vSwitch `cluster` (docs/zones.md, vSwitches).
 node_link = {
   vlan = 4000
@@ -20,25 +16,33 @@ node_links = {
   "pve-2" = { nic = "eno1", address = "10.20.0.2" }
 }
 
-sdn_zone_id = "homelab"
-
-# Keyed by VNet ID, at most 8 letters and digits (docs/zones.md, Zones).
+# Keyed by bridge name, at most 8 letters and digits; each zone's `vlan` is its
+# vSwitch's (docs/zones.md, Zones and vSwitches).
 zones = {
   mgmt = {
     alias = "mgmt"
     cidr  = "10.10.0.0/24"
     snat  = true
+    vlan  = 4001
   }
   ci = {
     alias = "ci"
     cidr  = "10.10.1.0/24"
     snat  = true
+    vlan  = 4002
   }
   platform = {
     alias = "platform"
     cidr  = "10.10.4.0/24"
     snat  = true
+    vlan  = 4003
   }
+}
+
+# Each node's address in each zone it routes for: pve-1's is every zone's
+# gateway. pve-2 has none until its first guest.
+zone_gateways = {
+  "pve-1" = { mgmt = "10.10.0.1", ci = "10.10.1.1", platform = "10.10.4.1" }
 }
 
 template_datastore = "local"

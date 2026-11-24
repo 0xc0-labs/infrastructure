@@ -1,9 +1,60 @@
-module "sdn" {
-  source = "../../modules/sdn-zone"
+# Every zone is a bridge over its vSwitch on every node. A node with an entry
+# in `zone_gateways` holds the zone's address on it, and so routes for it.
+locals {
+  zone_bridges = {
+    for p in setproduct(var.nodes, keys(var.zones)) : "${p[0]}/${p[1]}" => {
+      node    = p[0]
+      zone    = p[1]
+      address = try(var.zone_gateways[p[0]][p[1]], null)
+    }
+  }
+}
 
-  zone_id = var.sdn_zone_id
-  nodes   = var.sdn_nodes
-  vnets   = var.zones
+module "zone_bridge" {
+  source   = "../../modules/zone-bridge"
+  for_each = local.zone_bridges
+
+  node_name     = each.value.node
+  name          = each.value.zone
+  nic           = var.node_links[each.value.node].nic
+  vlan          = var.zones[each.value.zone].vlan
+  mtu           = var.node_link.mtu
+  address       = each.value.address
+  prefix_length = tonumber(split("/", var.zones[each.value.zone].cidr)[1])
+}
+
+# The nodes were changed by hand, in one reload, before this root managed
+# them: the bridges and their VLAN interfaces exist already (#284).
+locals {
+  adopted_nodes = ["pve-1", "pve-2"]
+  adopted_bridges = {
+    for k, b in local.zone_bridges : k => b if contains(local.adopted_nodes, b.node)
+  }
+}
+
+import {
+  for_each = local.adopted_bridges
+
+  to = module.zone_bridge[each.key].proxmox_network_linux_vlan.zone
+  id = "${each.value.node}:${var.node_links[each.value.node].nic}.${var.zones[each.value.zone].vlan}"
+}
+
+import {
+  for_each = local.adopted_bridges
+
+  to = module.zone_bridge[each.key].proxmox_network_linux_bridge.zone
+  id = "${each.value.node}:${each.value.zone}"
+}
+
+# What the zones were before the bridges, made on the nodes already: forgotten
+# without destroying, since destroying it would delete every bridge under its
+# guests (#284).
+removed {
+  from = module.sdn
+
+  lifecycle {
+    destroy = false
+  }
 }
 
 # Packer's templates are created outside OpenTofu: read them from Proxmox.
@@ -38,8 +89,8 @@ module "templates" {
   bridge                   = each.value.bridge
   mtu                      = var.node_link.mtu
 
-  # The default bridge is one of the SDN VNets.
-  depends_on = [module.sdn]
+  # The default bridge is one of the zones.
+  depends_on = [module.zone_bridge]
 }
 
 # Only the nodes this root runs on get an interface; the set below holds them all.
@@ -226,8 +277,8 @@ module "vms" {
   ssh_public_keys = var.vm_admin_ssh_keys
   tags            = [each.value.vnet]
 
-  # The VNets must exist before a VM can attach to one.
-  depends_on = [module.sdn]
+  # The bridges must exist before a VM can attach to one.
+  depends_on = [module.zone_bridge]
 }
 
 module "cluster" {
@@ -270,8 +321,8 @@ module "cluster" {
   username        = var.vm_admin_user
   ssh_public_keys = var.vm_admin_ssh_keys
 
-  # The VNets must exist before a VM can attach to one.
-  depends_on = [module.sdn]
+  # The bridges must exist before a VM can attach to one.
+  depends_on = [module.zone_bridge]
 }
 
 module "zone_firewall" {

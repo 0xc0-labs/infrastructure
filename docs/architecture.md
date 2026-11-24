@@ -20,8 +20,8 @@ quorum alone. They talk over one corosync link on the vSwitch `cluster`
 (`10.20.0.1` and `10.20.0.2`, [`zones.md`](zones.md#vswitches)), and both are in
 `nodes`, each with its link interface and the same firewall rules from this
 root. `pve-1` is the first of them: it runs every VM, the templates and the
-backups, and it alone holds the zones' gateway and SNAT (`sdn_nodes`) until the
-zones ride the vSwitches. `pve-2` has no guest. PBS runs on `pve-1`'s host, so
+backups, and it alone holds the zones' gateway and SNAT (`zone_gateways`).
+`pve-2` has no guest, and the zones' bridges on it are layer 2 only. PBS runs on `pve-1`'s host, so
 its `sbox` storage is reached over the link, on `10.20.0.1`. The rest of this section is
 `pve-1`.
 
@@ -39,8 +39,8 @@ flowchart TB
       rustfs["RustFS<br/>OpenTofu state"]
     end
 
-    subgraph sdn["SDN Simple zone — managed by OpenTofu"]
-      zones["three VNets, one per zone<br/>host is .1 in each"]
+    subgraph bridges["Zone bridges — managed by OpenTofu"]
+      zones["three bridges over the vSwitches, one per zone<br/>host is .1 in each"]
     end
   end
 
@@ -61,7 +61,7 @@ flowchart TB
   NVMe failure loses it, and recovery is a reinstall plus a restore from PBS
   on the Storage Box.
 - **`eno1`** keeps the public IP. Guests never attach to it: Hetzner drops
-  unknown MACs on the public interface. They live on internal VNets, and reach
+  unknown MACs on the public interface. They live on the zones' bridges, and reach
   the internet through SNAT on the host.
 - **Docker** runs Traefik and RustFS, and is configured by hand, outside IaC,
   with one setting the zone firewall depends on. `/etc/docker/daemon.json`:
@@ -77,8 +77,8 @@ flowchart TB
   [`#2`](https://github.com/0xc0-labs/infrastructure/issues/2)). On a
   reinstalled node, write that file, restart Docker and run
   `iptables -P FORWARD ACCEPT` **before** the first apply.
-- **Forwarding**, also by hand, on a node that routes for the zones. The SDN
-  writes `ip-forward on` only on each VNet's bridge; the replies come in
+- **Forwarding**, also by hand, on a node that routes for the zones. Only the
+  zones' bridges forward by themselves; the replies come in
   through `eno1`, whose forwarding follows `net.ipv4.ip_forward`, and no file
   sets it (Hetzner's `99-hetzner.conf` has it commented out). Without it a
   guest has its gateway and no internet. `/etc/sysctl.d/90-ip-forward.conf`:
@@ -158,8 +158,9 @@ bumping its `rebuild` counter.
 
 ## Zones
 
-Each zone is a VNet in one SDN Simple zone, with a subnet whose gateway `.1` is
-the host. The host routes between zones and applies the firewall; everything
+Each zone is a Linux bridge over its Hetzner vSwitch on both nodes, with a
+gateway `.1` that is the host, `pve-1`
+([`zones.md`](zones.md#zones)). The host routes between zones and applies the firewall; everything
 not listed in the transit matrix is denied.
 
 ```mermaid
