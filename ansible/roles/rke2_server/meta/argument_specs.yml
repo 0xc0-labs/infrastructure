@@ -56,3 +56,7 @@ argument_specs:
         default: stable
         choices: [stable, latest]
         description: Rancher's RPM repository channel.
+      rke2_server_canal_veth_mtu:
+        type: int
+        default: 1350
+        description: MTU of every pod's interface, set in rke2-canal's chart. The guests' MTU minus VXLAN's 50 bytes.
