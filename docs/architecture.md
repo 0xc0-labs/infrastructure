@@ -98,6 +98,20 @@ flowchart TB
   `Detected Hardware Unit Hang` and the node was without network for 23
   minutes ([`#254`](https://github.com/0xc0-labs/infrastructure/issues/254)).
   GRO, the receive side, stays on. On a reinstalled node, add the line.
+- **The MSS clamp**, also by hand, on the node that routes for the zones: in
+  the same stanza, after the offload line,
+
+  ```
+  post-up iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+  ```
+
+  It rewrites the segment size of every forwarded TCP handshake to what the
+  path carries, so a guest and its peer agree on 1360 from the first packet
+  whatever MTU each believes it has. It was added before the zones' bridges
+  went to MTU 1400 (#284, #287). The `-C` test makes it run once however many
+  times the network reloads. The provider's API keeps the line when it
+  rewrites the file. It reaches TCP only: QUIC, which the Cloudflare tunnels
+  use, is not covered (`zones.md`, vSwitches).
 - **Hetzner firewall**, in Robot, also by hand. It is stateless: a reply gets
   in only if an incoming rule matches it. TCP replies pass through the `ack`
   rule, UDP only for what is listed. Besides DNS and NTP (source ports 53 and
@@ -123,7 +137,8 @@ do not apply to a node installed without them, as in the README's
 that routes for the zones, `pve-1`: the gateway and SNAT are its own, and a
 guest on another node reaches them over the vSwitch at layer 2. The offloads
 apply to any node whose NIC's driver is `e1000e`, and Hetzner's firewall to
-every node. All three are set by hand.
+every node. The MSS clamp is for the node that routes for the zones. All of
+them are set by hand.
 
 ## Templates
 

@@ -305,6 +305,21 @@ sits on that NIC and goes with it. Take them one at a time, with the node Ready
 (`flannel.1` at the new size), Vault's pod unsealed on it and Longhorn's volumes
 healthy before the next. The PR's plan then shows nothing to change.
 
+After any change that narrows a route to the guests (a bridge's or a vSwitch's
+MTU), restart whatever holds long-lived UDP sessions through it, one VM at a
+time: a QUIC tunnel keeps the packet size it opened with, and the guest's own
+MTU does not limit what it is sent. Today that is `cloudflared` on
+`vm-access-01`, `vm-access-02`, `vm-lb-01` and `vm-lb-02`:
+
+```
+sudo systemctl restart cloudflared
+```
+
+Seen: on `pve-1`, `nstat IpFragFails` stops growing, and an SSH session to a
+guest through WARP opens (a key exchange is the first large packet). Take the
+next VM only once both hold; the other `vm-access` keeps the admin path
+meanwhile. Why, in [`docs/zones.md`](docs/zones.md#vswitches).
+
 ## gVisor on vm-rke2-04
 
 `vm-rke2-04` runs gVisor, as a test (2026-11-20, 0xc0-labs/workspace#266): the
