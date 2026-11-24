@@ -61,8 +61,8 @@ templates = {
   }
   # Rocky publishes only SHA-256.
   "rocky-10-cloud" = {
-    vm_id              = 9001
-    node               = "pve-2"
+    vm_id = 9001
+    node  = "pve-2"
     # Rocky moves a release to its vault once the next one is out, and a vault URL does not move again.
     image_url          = "https://dl.rockylinux.org/vault/rocky/10.2/images/x86_64/Rocky-10-GenericCloud-Base-10.2-20260525.0.x86_64.qcow2"
     image_checksum     = "9fc9e9ff16888bb68ac39b0392e25c9c92684d50c85f1cce6ab549363bbc4b48"
