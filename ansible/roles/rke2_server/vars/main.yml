@@ -5,6 +5,10 @@ rke2_server_gpg_key: https://rpm.rancher.io/public.key
 # RKE2 applies what it finds here, and again whenever it changes.
 rke2_server_manifests_dir: /var/lib/rancher/rke2/server/manifests
 
+# RKE2's own kubectl and the admin kubeconfig it writes on every server.
+rke2_server_kubectl: /var/lib/rancher/rke2/bin/kubectl
+rke2_server_kubeconfig: /etc/rancher/rke2/rke2.yaml
+
 # Present only once this host has joined or initialised a cluster.
 rke2_server_etcd_dir: /var/lib/rancher/rke2/server/db/etcd
 
