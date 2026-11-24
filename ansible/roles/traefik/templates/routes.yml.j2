@@ -1,0 +1,70 @@
+# {{ ansible_managed }}
+# The host's Traefik had these routes, with 127.0.0.1 where the node is now.
+# RustFS listens on the rustfs role's two loopback ports.
+http:
+  routers:
+    pve:
+      rule: "Host(`pve.0xc0.cc`)"
+      entryPoints: [websecure]
+      service: pve
+      tls:
+        certResolver: letsencrypt
+    pbs:
+      rule: "Host(`pbs.0xc0.cc`)"
+      entryPoints: [websecure]
+      service: pbs
+      tls:
+        certResolver: letsencrypt
+    rustfs-console:
+      rule: "Host(`s3.0xc0.cc`) && PathPrefix(`/rustfs/console`)"
+      entryPoints: [websecure]
+      service: rustfs-console
+      priority: 100
+      tls:
+        certResolver: letsencrypt
+    rustfs-api:
+      rule: "Host(`s3.0xc0.cc`)"
+      entryPoints: [websecure]
+      service: rustfs-api
+      priority: 1
+      tls:
+        certResolver: letsencrypt
+    rustfs-console-alias:
+      rule: "Host(`s3-console.0xc0.cc`)"
+      entryPoints: [websecure]
+      service: rustfs-console
+      middlewares: [to-console]
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    to-console:
+      redirectRegex:
+        regex: "^https://s3-console\\.0xc0\\.cc/.*"
+        replacement: "https://s3.0xc0.cc/rustfs/console/"
+        permanent: false
+
+  services:
+    pve:
+      loadBalancer:
+        servers:
+          - url: "https://{{ traefik_node_address }}:8006"
+        serversTransport: selfsigned
+    pbs:
+      loadBalancer:
+        servers:
+          - url: "https://{{ traefik_node_address }}:8007"
+        serversTransport: selfsigned
+    rustfs-api:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:9000"
+    rustfs-console:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:9001"
+
+  # The nodes' certificates are self-signed.
+  serversTransports:
+    selfsigned:
+      insecureSkipVerify: true

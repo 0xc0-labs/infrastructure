@@ -30,7 +30,8 @@ link, on `10.20.0.1`. The rest of this section is `pve-1`.
 `terraform.tfvars` (`modules/container`): unprivileged, in a zone like any
 guest, with the same firewall on their NIC, from the same matrix, and in the
 same daily backup. The first, `ct-base-01` on `pve-2` in `ci`, is where the
-base services will move to, from `pve-1`'s host; nothing runs in it yet.
+base services will move to, from `pve-1`'s host: Traefik and RustFS run in it,
+configured from the pipeline, and nothing points at it yet.
 
 **Moving a guest between nodes.** A guest moves live, with its disks, over the
 link: `qm migrate <id> <node> --online --with-local-disks`, run by hand on its

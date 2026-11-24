@@ -1,0 +1,7 @@
+traefik_version: "3.7.20"
+# The release's traefik_v3.7.20_checksums.txt.
+traefik_tarball_sha256: "389736d8b121d4d41e044294df03ba4d8fe4ea3744e38ae270c10fbdaab8e10a"
+
+traefik_acme_resolvers:
+  - "1.1.1.1:53"
+  - "8.8.8.8:53"

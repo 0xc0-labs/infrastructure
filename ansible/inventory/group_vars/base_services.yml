@@ -1,0 +1,6 @@
+# An LXC has no cloud-init user: the provider gave root the admin keys.
+ansible_user: root
+
+# The ci gateway of zone_gateways in terraform.tfvars: the node that answers
+# Proxmox and PBS, before and after the zones' .1 move to pve-2.
+traefik_node_address: 10.10.1.1

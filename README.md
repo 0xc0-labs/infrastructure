@@ -339,6 +339,54 @@ playbook. The role removes the template, the binaries and the file-context
 rules, and restarts `rke2-agent` once; the node's pods are labelled again as
 they restart.
 
+## ct-base-01: Traefik and RustFS
+
+`playbooks/ct-base.yml` configures `ct-base-01` (`10.10.1.30`, group
+`base_services`) from the pipeline, like every VM: the `rustfs` and `traefik`
+roles, each a pinned binary under systemd, no Docker. Ansible connects as
+`root`, with CI's key. Nothing points at the container until
+infrastructure#298.
+
+What runs in it:
+
+- **RustFS**, as `rustfs`, its data in `/var/lib/rustfs`; the API on
+  `127.0.0.1:9000` and the console on `127.0.0.1:9001`. It starts empty: the
+  bucket `tfstate`, its policy and the user the pipelines log in as arrive with
+  the data directory, copied by hand.
+- **Traefik**, as `traefik`, on `:443` alone, with the routes of the host's
+  Traefik (`pve`, `pbs`, `s3`, `s3-console`). Proxmox and PBS are reached at
+  the node's `ci` gateway, `traefik_node_address` in
+  `ansible/inventory/group_vars/base_services.yml`, which mirrors `zone_gateways`
+  in `terraform.tfvars`. Its certificates come from Let's Encrypt, by DNS
+  challenge with Cloudflare.
+
+The `base` role does not apply here: it sets `PermitRootLogin no`, and root is
+the only way in, and its guest agent, hostname and admin user are a VM's.
+`playbooks/base.yml` leaves the group out. What Debian's `sshd` and the
+container's key-only root give is the whole of its SSH hardening. The only
+thing a dry run changes on the container is installing `python3` and
+`python3-apt`, when it has none: without them no module can run.
+
+**Secrets**, none in a repo:
+
+- **Traefik's Cloudflare token** is in Vault, at `ci/infrastructure/traefik`,
+  key `cloudflare_dns_api_token`: a token with Zone, DNS, Edit on `0xc0.cc`
+  alone. The workflow reads it into `TRAEFIK_CLOUDFLARE_DNS_API_TOKEN`, and the
+  role writes it to `/etc/traefik/traefik.env`, readable by root and `traefik`.
+  How to write or rotate it: [`vault`'s README, "Writing or rotating a
+  secret"](https://github.com/0xc0-labs/vault#writing-or-rotating-a-secret).
+- **RustFS's root credentials** are the RustFS admin of `vault`'s README,
+  ["Recovery credentials: outside
+  Vault"](https://github.com/0xc0-labs/vault#recovery-credentials-outside-vault):
+  the OpenTofu state comes before any pipeline, so they are kept in the
+  operator's password manager and written by hand into
+  `/etc/rustfs/rustfs.env`, owned by root, mode 0600, as `RUSTFS_ACCESS_KEY` and
+  `RUSTFS_SECRET_KEY`. The role checks that the file is there and is 0600, and
+  stops otherwise; it never reads it.
+
+**After a disaster, restore this container from PBS first.** It holds the
+OpenTofu state, and nothing in the pipeline runs without it.
+
 ## Private buckets
 
 `artistlabco-com-resources` and `artistlabco-com-staging-resources` are

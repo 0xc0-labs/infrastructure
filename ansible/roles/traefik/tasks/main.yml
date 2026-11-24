@@ -1,0 +1,112 @@
+- name: Refuse an empty Cloudflare token
+  ansible.builtin.assert:
+    that: traefik_cloudflare_dns_api_token | length > 0
+    fail_msg: No Cloudflare token. Run through scripts/ansible or the pipeline, which read it from Vault (README.md, ct-base-01).
+  no_log: true
+
+- name: Create the traefik user, whose home is its state directory
+  ansible.builtin.user:
+    name: "{{ traefik_user }}"
+    system: true
+    home: "{{ traefik_state_dir }}"
+    create_home: true
+    shell: /usr/sbin/nologin
+  register: traefik_account
+
+- name: Look for the Traefik binary
+  ansible.builtin.stat:
+    path: "{{ traefik_install_dir }}/traefik"
+  register: traefik_binary
+
+- name: Download Traefik {{ traefik_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/traefik/traefik/releases/download/v{{ traefik_version }}/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
+    dest: "/var/cache/traefik-{{ traefik_version }}.tar.gz"
+    checksum: "sha256:{{ traefik_tarball_sha256 }}"
+    mode: "0644"
+  register: traefik_tarball
+  when: not traefik_binary.stat.exists
+
+- name: Create the install directory
+  ansible.builtin.file:
+    path: "{{ traefik_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# A dry run downloads nothing, so there may be no tarball yet.
+- name: Unpack Traefik {{ traefik_version }}
+  ansible.builtin.unarchive:
+    src: "/var/cache/traefik-{{ traefik_version }}.tar.gz"
+    dest: "{{ traefik_install_dir }}"
+    remote_src: true
+    owner: root
+    group: root
+    include: [traefik]
+    creates: "{{ traefik_install_dir }}/traefik"
+  when: not traefik_binary.stat.exists and not (ansible_check_mode and traefik_tarball is changed)
+  notify: Restart traefik
+
+- name: Drop the tarball
+  ansible.builtin.file:
+    path: "/var/cache/traefik-{{ traefik_version }}.tar.gz"
+    state: absent
+
+- name: Create the config directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ traefik_config_dir }}"
+    - "{{ traefik_config_dir }}/dynamic"
+
+- name: Write the static configuration
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: "{{ traefik_config_dir }}/traefik.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart traefik
+
+# The file provider watches this directory: a change to a route needs no restart.
+- name: Write the routes
+  ansible.builtin.template:
+    src: routes.yml.j2
+    dest: "{{ traefik_config_dir }}/dynamic/routes.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+# The group does not exist yet in a dry run on a new container.
+- name: Write the Cloudflare token
+  ansible.builtin.copy:
+    dest: "{{ traefik_config_dir }}/traefik.env"
+    content: "CF_DNS_API_TOKEN={{ traefik_cloudflare_dns_api_token }}\n"
+    owner: root
+    group: "{{ omit if (ansible_check_mode and traefik_account is changed) else traefik_user }}"
+    mode: "0640"
+  no_log: true
+  notify: Restart traefik
+
+- name: Install the systemd unit
+  ansible.builtin.template:
+    src: traefik.service.j2
+    dest: /etc/systemd/system/traefik.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: traefik_unit
+  notify: Restart traefik
+
+- name: Enable and start Traefik
+  ansible.builtin.systemd_service:
+    name: traefik
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not (ansible_check_mode and (traefik_unit is changed or traefik_account is changed or traefik_tarball is changed))

@@ -29,6 +29,7 @@ jobs:
       # the github_runner role's README).
       playbooks: |
         playbooks/cluster.yml
+        playbooks/ct-base.yml
         playbooks/vm-access.yml
         playbooks/vm-ci.yml
       vault-addr: https://vault.int.0xc0.cc
@@ -39,5 +40,6 @@ jobs:
         ci/data/infrastructure/ssh private_key | CI_SSH_PRIVATE_KEY ;
         ci/data/infrastructure/runner-approle secret_id | GITHUB_RUNNER_APPROLE_SECRET_ID ;
         ci/data/infrastructure/rke2 token | RKE2_TOKEN ;
+        ci/data/infrastructure/traefik cloudflare_dns_api_token | TRAEFIK_CLOUDFLARE_DNS_API_TOKEN ;
         platform/data/argocd/admin password_bcrypt | ARGOCD_ADMIN_PASSWORD_BCRYPT ;
       ssh-key-env: CI_SSH_PRIVATE_KEY

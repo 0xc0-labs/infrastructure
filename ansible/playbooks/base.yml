@@ -1,6 +1,7 @@
 # On its own, it adds a key everywhere without touching what the VMs run.
 - name: Apply the baseline to every VM
-  hosts: vms
+  # Not the container: the role would shut root out of it (README.md, ct-base-01).
+  hosts: vms:!base_services
   become: true
   roles:
     - role: base

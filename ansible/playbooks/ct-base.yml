@@ -1,0 +1,27 @@
+- name: Configure the base services container
+  hosts: base_services
+  # No facts: the container may have no Python until the first task.
+  gather_facts: false
+  # Root already, and the container has no sudo. The base role is left out
+  # (README.md, ct-base-01).
+  become: false
+  pre_tasks:
+    - name: Look for Python
+      ansible.builtin.raw: test -x /usr/bin/python3 && dpkg -s python3-apt >/dev/null 2>&1
+      register: ct_base_python
+      changed_when: false
+      failed_when: ct_base_python.rc not in [0, 1]
+      check_mode: false
+
+    # Ansible's own prerequisite, so it runs in a dry run too, once: without
+    # it no module can, and the dry run could not reach the container.
+    - name: Install Python
+      ansible.builtin.raw: apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-apt
+      changed_when: true
+      check_mode: false
+      when: ct_base_python.rc != 0
+  roles:
+    - role: rustfs
+    - role: traefik
+      vars:
+        traefik_cloudflare_dns_api_token: "{{ lookup('ansible.builtin.env', 'TRAEFIK_CLOUDFLARE_DNS_API_TOKEN') }}"

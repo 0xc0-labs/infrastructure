@@ -10,6 +10,7 @@ python_env
 vault_env_state
 vault_env GITHUB_RUNNER_APPROLE_SECRET_ID infrastructure/runner-approle secret_id
 vault_env RKE2_TOKEN infrastructure/rke2 token
+vault_env TRAEFIK_CLOUDFLARE_DNS_API_TOKEN infrastructure/traefik cloudflare_dns_api_token
 # ArgoCD's, under platform/: it is ArgoCD's secret, granted to this CI by name.
 vault_env ARGOCD_ADMIN_PASSWORD_BCRYPT argocd/admin password_bcrypt platform
 

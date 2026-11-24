@@ -1,0 +1,7 @@
+rustfs_version: "1.0.6"
+# The release's SHA256SUMS.
+rustfs_zip_sha256: "a4d109a09857c04bf5d11b2cec0fbbf0887819b9392e5d46d7d153dae6a1398f"
+
+# Loopback: Traefik's routes (the traefik role) point at these two.
+rustfs_address: "127.0.0.1:9000"
+rustfs_console_address: "127.0.0.1:9001"
