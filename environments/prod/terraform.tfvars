@@ -211,7 +211,6 @@ transit = [
   { from = "ci", to = ["node"], ports = [443, 8006], note = "Proxmox API and RustFS, through Traefik on 443. NEVER 22 towards the node from ci" },
   { from = "mgmt", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "Traefik in ct-base-01 (Proxmox UI, PBS, RustFS), over WARP" },
   { from = "ci", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "the runners towards RustFS and the Proxmox API, through Traefik in ct-base-01" },
-  { from = "ci", to = ["node"], ports = [8007], sources = ["ct-base-01"], note = "Traefik in ct-base-01 towards PBS on the host" },
   { from = "platform", to = ["platform"], ports = ["2379-2381", 6443, 9099, 9345, 10250, 10257, 10259, "30000-32767"], note = "the cluster: etcd and its metrics, API, Canal health, supervisor, kubelet, controller-manager and scheduler metrics, NodePorts; the LB towards the nodes" },
   { from = "platform", to = ["platform"], proto = "udp", ports = [8472], note = "Canal VXLAN between the cluster nodes" },
   { from = "platform", to = ["platform"], proto = "vrrp", ports = [], note = "keepalived between the two LB VMs" },
@@ -220,6 +219,7 @@ transit = [
   { from = "platform", to = ["internet"], ports = [443], note = "egress, alerts to the phone among it" },
   { from = "internet", to = ["node"], ports = [22], note = "break-glass SSH, key-only; the Hetzner firewall keeps it closed until opened" },
   { from = "nodes", to = ["node"], ports = [8007], note = "PBS on pve-1's host, for the guests of the other nodes" },
+  { from = "ci", to = ["node"], ports = [8007], sources = ["ct-base-01"], note = "Traefik in ct-base-01 towards PBS on the host" },
 ]
 
 # From the admin zones the node admits only these ports, whatever an entry

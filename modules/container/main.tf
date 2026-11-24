@@ -66,6 +66,8 @@ resource "proxmox_virtual_environment_container" "main" {
     prevent_destroy = true
 
     # A new template must not recreate the container made from the old one.
-    ignore_changes = [operating_system[0].template_file_id]
+    # The provider also replaces a container whose keys change; the keys reach
+    # a running container through Ansible, not through the provider.
+    ignore_changes = [operating_system[0].template_file_id, initialization[0].user_account]
   }
 }
