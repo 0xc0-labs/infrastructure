@@ -21,12 +21,12 @@ quorum alone. They talk over one corosync link on the vSwitch `cluster`
 (`10.20.0.1` and `10.20.0.2`, [`zones.md`](zones.md#vswitches)), and both are in
 `nodes`, each with its link interface and the same firewall rules from this
 root. Every machine, VM and template names the node it runs on, its `node` in
-`terraform.tfvars`: today all of them but `ct-base-01` say `pve-1`, which runs
-every VM and the templates. `pve-2` alone holds the zones' gateway and SNAT
-(`zone_gateways`) and runs PBS, while `pve-1` is away; `pve-1`'s bridges are
-layer 2 only. The `sbox` storage is `server 10.20.0.2`, `pve-2`'s link address,
-which both nodes reach. `pve-1` takes the role back once it has been
-reinstalled with RAID 1 and rejoined (workspace#285). The rest of this section
+`terraform.tfvars`: every one says `pve-2` while `pve-1` is away, so `pve-2`
+runs every VM, RKE2 machine, container and template, and Packer builds there.
+`pve-2` alone holds the zones' gateway and SNAT (`zone_gateways`) and runs PBS;
+`pve-1`'s bridges are layer 2 only. The `sbox` storage is `server 10.20.0.2`, `pve-2`'s link address,
+which both nodes reach. `pve-1` takes the role back, and its share of the
+guests, once it has been reinstalled with RAID 1 and rejoined (workspace#285). The rest of this section
 says which node each paragraph is about.
 
 **Containers.** Beside the VMs there are LXC containers, the `containers` map in
@@ -104,8 +104,8 @@ flowchart TB
   The zone firewall needs the `FORWARD` policy at ACCEPT on every node that
   hosts guests, not only the routing one: a guest's traffic crosses its
   firewall bridge on the node it runs on, through that node's `FORWARD` chain
-  (`net.bridge.bridge-nf-call-iptables = 1`). Today that is `pve-1`, which
-  hosts every guest but `ct-base-01`. The
+  (`net.bridge.bridge-nf-call-iptables = 1`). Today that is `pve-2`, which
+  hosts every guest, and `pve-1` once it takes its share back. The
   Proxmox firewall explicitly accepts only traffic *into* a VM. It leaves
   traffic *out of* a VM, and the hop across a zone bridge, to that policy, so
   a DROP takes every VM's egress and its peers (tested in
