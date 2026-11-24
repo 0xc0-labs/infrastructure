@@ -10,7 +10,9 @@ github_runner_labels:
   - "{{ inventory_hostname }}"
 
 # The CI VMs are not on WARP, so Gateway does not resolve the internal names
-# for them.
+# for them, nor the base services' names (Traefik in ct-base-01).
 github_runner_hosts:
   - address: "{{ platform_internal_vip }}"
     names: [vault.int.0xc0.cc]
+  - address: "{{ hostvars['ct-base-01'].ansible_host }}"
+    names: [s3.0xc0.cc, pve.0xc0.cc]

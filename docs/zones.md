@@ -134,12 +134,13 @@ The addressing plan, so that no address is handed out twice:
 | `vm-rke2-04` | platform | 10.10.4.24 |
 
 `ct-base-01` is an unprivileged LXC container, Debian 13, 1 core, 1 GiB and 8 GB
-(`modules/container`), the home of the base services that run on `pve-1`'s host
-today: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
+(`modules/container`), the home of the base services: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
 holds the OpenTofu state, and nothing enters `mgmt` from another zone but SSH
 from the CI VMs (invariant 5). Its gateway is `pve-1`'s `.1`, across the
 vSwitch, like every guest's on `pve-2`. Traefik and RustFS run in it, from the
-pipeline, but nothing points at it yet (README, ct-base-01).
+pipeline (README, ct-base-01), and the names `pve`, `pbs`, `s3` and
+`s3-console` point at it: WARP's Gateway through `base_service_hostnames`, and
+the CI VMs through their `/etc/hosts`.
 
 The `platform` VIPs are not VMs: they are the keepalived addresses the two
 `vm-lb` VMs share, in front of HAProxy, and they always move together.
@@ -207,8 +208,8 @@ rule in Proxmox always traces back to its line of the matrix.
   `admin_ports`: from an admin zone, the node admits no others.
 - An entry towards the **node** becomes a node rule. From a control zone only
   the node's `admin_ports` (`node_firewall`) survive: `mgmt`'s admin entry
-  gives it 22 and 8006 on the node, and its Traefik entry 443; `ci` gets 443
-  and 8006. Towards `platform`, `ci` gets 22, 6443 and 443: the last one for
+  gives it 22 and 8006 on the node; `ci` gets 8006, and no zone gets 443.
+  Towards `platform`, `ci` gets 22, 6443 and 443: the last one for
   the vault repo's CI, which reaches Vault on the internal VIP (the rule opens
   443 to the whole zone, the VIPs included). From anywhere else, the entry's ports as written: 9100 from
   `platform`, for the node metrics scrape, and 8007 from `nodes`, PBS on
@@ -246,7 +247,7 @@ its PR. Those marked **(code)** are also validations in
    runs the vm-access playbook (operator decision, 2026-09-29). Besides that,
    SSH between the two `vm-access` connectors, inside `mgmt`, is the only way
    in.
-6. Every node stays on DROP, with the same rules on each: only 22, 443 and
+6. Every node stays on DROP, with the same rules on each: only 22 and
    8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
    from the internet only SSH as break-glass, closed by the Hetzner firewall
    until opened **(code)**; and 8007, which is PBS on `pve-1`'s host, from the

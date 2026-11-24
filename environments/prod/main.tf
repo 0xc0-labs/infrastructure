@@ -138,8 +138,8 @@ module "zero_trust" {
   include_networks = [var.zones_cidr]
   allowed_emails   = var.warp_allowed_emails
 
-  private_hostnames    = var.node_web_hostnames
-  private_hostnames_ip = cidrhost(var.zones["mgmt"].cidr, 1)
+  private_hostnames    = var.base_service_hostnames
+  private_hostnames_ip = var.containers["ct-base-01"].ip
 
   internal_domains = var.internal_domains
   internal_ip      = var.cluster.internal_vip

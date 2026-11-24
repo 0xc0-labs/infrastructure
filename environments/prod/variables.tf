@@ -324,8 +324,8 @@ variable "datacenter_firewall_enabled" {
   type        = bool
 }
 
-variable "node_web_hostnames" {
-  description = "Hostnames Traefik serves on the node. WARP devices resolve them to the node's address in mgmt."
+variable "base_service_hostnames" {
+  description = "Hostnames Traefik in ct-base-01 serves (Proxmox, PBS, RustFS). WARP devices resolve them to the container's address."
   type        = list(string)
 }
 
@@ -404,7 +404,7 @@ variable "transit" {
   # docs/zones.md, Invariants, 6.
   validation {
     condition     = alltrue([for e in var.transit : !(e.from == "internet" && contains(e.to, "node")) || (length(e.ports) == 1 && e.ports[0] == "22")])
-    error_message = "From the internet the node accepts only SSH (22), as break-glass: Traefik and the API are reached over WARP."
+    error_message = "From the internet the node accepts only SSH (22), as break-glass: the Proxmox API is reached over WARP, and the web names go to ct-base-01."
   }
 }
 
