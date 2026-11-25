@@ -5,6 +5,8 @@ longhorn_node_disks:
 
 longhorn_node_path: /var/lib/longhorn
 
+# Pinned on open-iscsi's upstream version, with no distro release: any el10
+# release of it satisfies the pin, and dnf never upgrades an installed one.
 # Excluded from updates: open-iscsi 2.1.12 (6.2.1.12 in Rocky's numbering)
 # breaks Longhorn. Check Longhorn's requirements before a bump.
-longhorn_node_iscsi_version: "6.2.1.11-1.git4b3e853.el10_2.2"
+longhorn_node_iscsi_version: "6.2.1.11"
