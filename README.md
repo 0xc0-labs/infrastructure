@@ -588,6 +588,15 @@ artistlabco.com's Strapi's gated resources: private, with no custom domain, no
 to Vault by the operator: it is entered in Strapi's Integraciones
 (Almacenamiento), which writes it.
 
+`loki-chunks` and `tempo-blocks` are the observability stack's storage: Loki's
+chunks and index, Tempo's trace blocks (workspace#290). Private too. Each
+component's token is an R2 API token scoped to its bucket alone, with object
+read and write, created by the operator in Cloudflare's dashboard (R2 → Manage
+API tokens) and written to Vault at `platform/loki/r2` and `platform/tempo/r2`,
+with the keys `access_key_id` and `secret_access_key`
+([the generic block](https://github.com/0xc0-labs/vault#writing-or-rotating-a-secret)).
+The S3 endpoint is the `endpoint` of each bucket in the `r2_buckets` output.
+
 ## Hostnames behind Access
 
 `access_apps` puts a hostname behind Cloudflare Access, today
