@@ -469,18 +469,23 @@ by hand once it is out of the inventory.
 
 The `apps` taint is applied inside a maintenance window
 (0xc0-labs/workspace#288), not by a plain merge. Longhorn's own pods (the
-manager, the CSI plugins) must tolerate it first, or the taint evicts them from
-`vm-rke2-04` and `-05`, which hold two of the volumes' replicas: Longhorn's
-toleration setting is applied with every workload that has a Longhorn volume
-stopped (`gitops`' Longhorn README), and the applications and per-node agents
-tolerate the taint in `gitops` before this lands. `NoSchedule` evicts nothing
-already running, but a pod that restarts without the toleration stays Pending.
+manager, the CSI plugins) must tolerate it first. `NoSchedule` evicts nothing
+already running, so they keep running; but one that restarts later (an
+upgrade, a crash, a node reboot) cannot come back on `vm-rke2-04` or `-05`
+without the toleration, and the volumes attached there lose their engine.
+Longhorn's toleration setting is applied with every workload that has a
+Longhorn volume stopped (`gitops`' Longhorn README), and the applications and
+per-node agents tolerate the taint in `gitops` before this lands.
 
 The servers go to 6 vCPU and 16 GiB (`cluster.servers`) in the same window,
 because the whole infrastructure moves onto them. `reboot_after_update = false`
 in `modules/vm` means the apply only stages the new size: Proxmox keeps it as a
 pending change and the guests keep running at 12 GiB until they are stopped and
-started from Proxmox. The window's order:
+started from Proxmox. Merging starts both the OpenTofu run and the cluster
+playbook on `main`: the OpenTofu one may be approved any time, since it only
+stages the size, but the playbook only inside the window, after Longhorn's
+toleration shows applied, because it is what lands the taint. The window's
+order:
 
 1. Every workload with a Longhorn volume stopped, Longhorn's toleration applied.
 2. Approve the OpenTofu run on `main`: the three servers are updated in place,
