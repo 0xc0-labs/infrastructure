@@ -24,5 +24,5 @@ argument_specs:
         description: Where the volume is mounted, Longhorn's default data path.
       longhorn_node_iscsi_version:
         type: str
-        default: "6.2.1.11-1.git4b3e853.el10_2.2"
-        description: iscsi-initiator-utils version-release. 6.2.1.11 is open-iscsi 2.1.11; Longhorn breaks on 2.1.12.
+        default: "6.2.1.11"
+        description: iscsi-initiator-utils upstream version, with no release. 6.2.1.11 is open-iscsi 2.1.11; Longhorn breaks on 2.1.12.

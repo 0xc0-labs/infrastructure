@@ -474,6 +474,8 @@ variable "cluster" {
         memory_mb     = optional(number)
         disk_size_gb  = optional(number)
         data_disks_gb = optional(list(number))
+        # false leaves the VM out of the daily backup job.
+        backup = optional(bool, true)
       })), {})
     }), {})
   })

@@ -217,6 +217,9 @@ cluster = {
         memory_mb     = 32768
         disk_size_gb  = 150
         data_disks_gb = []
+        # Nothing to restore: the sandboxes are disposable and it has no Longhorn
+        # disks. Keeps the Storage Box, at 70%, for what matters.
+        backup = false
       }
     }
   }
