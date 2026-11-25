@@ -2,6 +2,10 @@
   ansible.builtin.import_tasks: host.yml
   tags: [longhorn_node, longhorn_node_host]
 
+- name: Grow the root partition with its disk
+  ansible.builtin.import_tasks: root.yml
+  tags: [longhorn_node, longhorn_node_root]
+
 - name: Prepare the data disks
   ansible.builtin.import_tasks: disks.yml
   tags: [longhorn_node, longhorn_node_disks]

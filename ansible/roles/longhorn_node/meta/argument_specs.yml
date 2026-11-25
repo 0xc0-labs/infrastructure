@@ -10,6 +10,9 @@ argument_specs:
       - When the disks have grown, grows the physical volumes, the logical
         volume and the XFS filesystem to match, online. It changes nothing when
         nothing grew.
+      - When the root disk has grown, grows the root partition (the last one on
+        the disk) and its XFS filesystem to match, online. It changes nothing
+        when nothing grew.
     options:
       longhorn_node_disks:
         type: list

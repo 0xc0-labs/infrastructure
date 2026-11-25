@@ -1,0 +1,61 @@
+# Growing the root disk in terraform.tfvars grows Proxmox's disk alone: these
+# tasks carry the new size up through the root partition, the last one on the
+# disk, and its XFS filesystem, online. growpart's own dry run says whether
+# the partition can grow, and the filesystem step acts only on a difference
+# larger than longhorn_node_grow_threshold_bytes, so a second run changes
+# nothing.
+
+- name: Find the root filesystem's partition
+  ansible.builtin.set_fact:
+    longhorn_node_root_device: "{{ (ansible_facts.mounts | selectattr('mount', 'equalto', '/') | first).device }}"
+
+- name: Split the partition into its disk and number
+  ansible.builtin.set_fact:
+    longhorn_node_root_parts: "{{ longhorn_node_root_device | regex_search('^(/dev/[a-z]+)([0-9]+)$', '\\1', '\\2') }}"
+
+- name: Refuse a root that is not a plain partition
+  ansible.builtin.assert:
+    that: longhorn_node_root_parts is iterable and longhorn_node_root_parts | length == 2
+    fail_msg: "The root filesystem is on {{ longhorn_node_root_device }}, not a /dev/sdXN partition."
+    quiet: true
+
+# Exit 0 prints CHANGE and 1 prints NOCHANGE: anything else is an error.
+- name: Ask growpart whether the root partition can grow
+  ansible.builtin.command:
+    cmd: "growpart --dry-run {{ longhorn_node_root_parts[0] }} {{ longhorn_node_root_parts[1] }}"
+  register: longhorn_node_root_growpart_dry
+  changed_when: false
+  failed_when: longhorn_node_root_growpart_dry.rc not in [0, 1]
+  check_mode: false
+
+- name: Grow the root partition to the end of the disk
+  ansible.builtin.command:
+    cmd: "growpart {{ longhorn_node_root_parts[0] }} {{ longhorn_node_root_parts[1] }}"
+  changed_when: true
+  when: longhorn_node_root_growpart_dry.rc == 0
+
+- name: Read the root partition's size
+  ansible.builtin.command:
+    cmd: "blockdev --getsize64 {{ longhorn_node_root_device }}"
+  register: longhorn_node_root_size
+  changed_when: false
+  check_mode: false
+
+- name: Read the root filesystem's size
+  ansible.builtin.command:
+    cmd: "xfs_info /"
+  register: longhorn_node_root_xfs
+  changed_when: false
+  check_mode: false
+
+# The "data" line of xfs_info, anchored as in grow.yml.
+- name: Grow the root filesystem to the whole partition
+  ansible.builtin.command:
+    cmd: "xfs_growfs /"
+  vars:
+    longhorn_node_root_xfs_data: "{{ longhorn_node_root_xfs.stdout | regex_search('data +=.*bsize=([0-9]+) +blocks=([0-9]+)', '\\1', '\\2') }}"
+  changed_when: true
+  when: >-
+    (longhorn_node_root_size.stdout | trim | int)
+    - (longhorn_node_root_xfs_data[0] | int) * (longhorn_node_root_xfs_data[1] | int)
+    > longhorn_node_grow_threshold_bytes

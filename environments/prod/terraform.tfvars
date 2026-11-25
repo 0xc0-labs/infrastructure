@@ -188,8 +188,9 @@ cluster = {
   }
   servers = {
     template = "rocky-10-base"
-    # The data disks are Longhorn's, joined by LVM (the longhorn_node role).
-    disk_size_gb  = 50
+    # The root holds containerd's images, hence 80 GiB. The data disks are
+    # Longhorn's, joined by LVM (the longhorn_node role).
+    disk_size_gb  = 80
     data_disks_gb = [150, 150]
     nodes = {
       "vm-rke2-01" = { node = "pve-2", ip = "10.10.4.21", rebuild = 1 }
@@ -200,7 +201,7 @@ cluster = {
   # Workers only (operator decision, 2026-09-30): etcd stays with the servers.
   agents = {
     template      = "rocky-10-base"
-    disk_size_gb  = 50
+    disk_size_gb  = 80
     data_disks_gb = [150, 150]
     nodes = {
       "vm-rke2-04" = { node = "pve-2", ip = "10.10.4.24" }
