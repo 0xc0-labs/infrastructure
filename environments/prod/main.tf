@@ -462,7 +462,7 @@ module "backup" {
   schedule = var.backup.schedule
   vm_ids = concat(
     [for name, vm in module.vms : vm.vm_id],
-    [for name, vm in module.cluster.vms : vm.vm_id],
+    module.cluster.backup_vm_ids,
     [for name, c in module.containers : c.vm_id],
   )
   retention = var.backup.retention
