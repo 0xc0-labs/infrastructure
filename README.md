@@ -452,7 +452,7 @@ node (0xc0-labs/workspace#288):
 | Pool | Nodes | Where | Taint |
 |---|---|---|---|
 | `infra` | `vm-rke2-01`, `-02`, `-03` | `pve-2` | none |
-| `apps` | `vm-rke2-04`, `-05` | `pve-2` | none yet: it comes in its own change, inside a maintenance window |
+| `apps` | `vm-rke2-04`, `-05` | `pve-2` | `0xc0.cc/pool=apps:NoSchedule` |
 | `sandbox` | `vm-rke2-06` | `pve-1` | `0xc0.cc/pool=sandbox:NoSchedule` |
 
 The inventory declares them per host (`rke2_node_labels`, `rke2_node_taints`).
@@ -464,6 +464,36 @@ the last play of `cluster.yml` (`rke2_pools`) sets them with `kubectl label
 --overwrite` and `kubectl taint` from the first server on a node that already
 exists. It adds and changes, never removes: take a label or a taint off a node
 by hand once it is out of the inventory.
+
+### The `apps` taint and the servers' size: a maintenance window
+
+The `apps` taint is applied inside a maintenance window
+(0xc0-labs/workspace#288), not by a plain merge. Longhorn's own pods (the
+manager, the CSI plugins) must tolerate it first, or the taint evicts them from
+`vm-rke2-04` and `-05`, which hold two of the volumes' replicas: Longhorn's
+toleration setting is applied with every workload that has a Longhorn volume
+stopped (`gitops`' Longhorn README), and the applications and per-node agents
+tolerate the taint in `gitops` before this lands. `NoSchedule` evicts nothing
+already running, but a pod that restarts without the toleration stays Pending.
+
+The servers go to 6 vCPU and 16 GiB (`cluster.servers`) in the same window,
+because the whole infrastructure moves onto them. `reboot_after_update = false`
+in `modules/vm` means the apply only stages the new size: Proxmox keeps it as a
+pending change and the guests keep running at 12 GiB until they are stopped and
+started from Proxmox. The window's order:
+
+1. Every workload with a Longhorn volume stopped, Longhorn's toleration applied.
+2. Approve the OpenTofu run on `main`: the three servers are updated in place,
+   nothing else, and nothing restarts.
+3. Restart the servers so they take the new size. With nothing stateful
+   running, all three together is acceptable here; otherwise one at a time,
+   with `scripts/rolling-reboot vm-rke2-01 vm-rke2-02 vm-rke2-03`, which waits
+   for each node Ready and Longhorn healthy before the next.
+4. Run the cluster playbook: the last play sets the `apps` taint on
+   `vm-rke2-04` and `-05`.
+5. Drain and uncordon `vm-rke2-04` and `-05`, so what does not belong there
+   moves out.
+6. Start everything again, and the operator unseals Vault.
 
 OpenTofu sizes the agents once, in `cluster.agents`, and a node of another size
 says so in its own entry (`cores`, `memory_mb`, `disk_size_gb`, `data_disks_gb`):

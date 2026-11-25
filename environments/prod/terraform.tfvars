@@ -192,6 +192,10 @@ cluster = {
     # Longhorn's, joined by LVM (the longhorn_node role).
     disk_size_gb  = 80
     data_disks_gb = [150, 150]
+    # The whole infrastructure runs on the servers (workspace#288): about
+    # 22.5 GiB in use, spread over three, with room to lose one.
+    cores     = 6
+    memory_mb = 16384
     nodes = {
       "vm-rke2-01" = { node = "pve-2", ip = "10.10.4.21", rebuild = 1 }
       "vm-rke2-02" = { node = "pve-2", ip = "10.10.4.22", rebuild = 1 }
