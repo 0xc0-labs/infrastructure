@@ -137,6 +137,8 @@ The addressing plan, so that no address is handed out twice:
 | `vm-rke2-02` | platform | 10.10.4.22 |
 | `vm-rke2-03` | platform | 10.10.4.23 |
 | `vm-rke2-04` | platform | 10.10.4.24 |
+| `vm-rke2-05` | platform | 10.10.4.25 |
+| `vm-rke2-06` | platform | 10.10.4.26 |
 
 `ct-base-01` is an unprivileged LXC container, Debian 13, 1 core, 1 GiB and 8 GB
 (`modules/container`), the home of the base services: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
@@ -160,14 +162,19 @@ LB, so inside `platform` only the LBs reach 443 from the zone itself (#187).
 The firewall cannot tell the two VIPs apart: the tunnel's own ingress, which
 names only `10.10.4.10`, keeps the internet off the internal path.
 `vm-rke2-01` to `vm-rke2-03` are identical RKE2 servers — control plane, etcd
-and workloads together — and `vm-rke2-04` is an agent, workloads only. It is
-also the gVisor test (2026-11-20, 0xc0-labs/workspace#266): it runs `runsc` as
-a second runtime and gives its containers no SELinux label, so every pod there
-runs unlabelled while the test lasts. The way back is in the README, gVisor on
-vm-rke2-04.
+and workloads together — and `vm-rke2-04` to `vm-rke2-06` are agents, workloads
+only, in two pools (0xc0-labs/workspace#288). `vm-rke2-04` and `vm-rke2-05`
+are the applications' (`0xc0.cc/pool=apps`) on `pve-2`, with Longhorn's disks;
+`vm-rke2-06` is the sandboxes' (`0xc0.cc/pool=sandbox`, tainted
+`0xc0.cc/pool=sandbox:NoSchedule`) on `pve-1`, with 10 vCPU, 32 GiB, a 150 GiB
+root and no data disks, so no Longhorn. The servers are the `infra` pool. The
+gVisor (0xc0-labs/workspace#266) runs on `vm-rke2-06` alone: `runsc` as a
+second runtime and no SELinux label on its containers, so every pod there runs
+unlabelled. The pools and the way back from gVisor are in the README, Node
+pools.
 `cluster` creates them all together (`modules/rke2-cluster`), so the load
-balancer is deployed with the cluster; each RKE2 node, servers and agents,
-carries two blank data disks besides its root one. HAProxy sends the API, the
+balancer is deployed with the cluster; each RKE2 node, servers and agents but
+`vm-rke2-06`, carries two blank data disks besides its root one. HAProxy sends the API, the
 supervisor and the ingress to the servers only.
 
 Packer builds a template on a throwaway VM, cloned from the previous template

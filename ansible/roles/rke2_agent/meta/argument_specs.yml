@@ -46,3 +46,14 @@ argument_specs:
         default: false
         description:
           - Install gVisor (runsc) and register it in containerd as the runtime runsc. Set back to false, the role removes it.
+      rke2_agent_node_labels:
+        type: dict
+        default: {}
+        description:
+          - Labels the node registers with, as key to value. Written to a drop-in of RKE2's config, which never restarts the service.
+          - RKE2 reads them at registration only. A node already in the cluster gets them from the rke2_pools role.
+      rke2_agent_node_taints:
+        type: list
+        elements: str
+        default: []
+        description: Taints the node registers with, each as key=value:Effect. The same drop-in, the same limits as the labels.

@@ -205,6 +205,19 @@ cluster = {
     data_disks_gb = [150, 150]
     nodes = {
       "vm-rke2-04" = { node = "pve-2", ip = "10.10.4.24" }
+      # The applications' second node, as vm-rke2-04.
+      "vm-rke2-05" = { node = "pve-2", ip = "10.10.4.25" }
+      # The sandboxes' node (workspace#288): on pve-1, which runs nothing else,
+      # with no Longhorn, so no data disks. Its images and the sandboxes'
+      # emptyDir volumes live on the root disk, on pve-1's NVMe.
+      "vm-rke2-06" = {
+        node          = "pve-1"
+        ip            = "10.10.4.26"
+        cores         = 10
+        memory_mb     = 32768
+        disk_size_gb  = 150
+        data_disks_gb = []
+      }
     }
   }
 }

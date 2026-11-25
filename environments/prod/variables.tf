@@ -252,12 +252,6 @@ variable "vms" {
     condition     = alltrue([for v in values(var.vms) : contains(var.nodes, v.node)])
     error_message = "A VM's node must be one of `nodes`."
   }
-
-  # `local` is a dir storage: Proxmox clones to another node only from shared storage.
-  validation {
-    condition     = alltrue([for v in values(var.vms) : !contains(keys(var.templates), v.template) || var.templates[v.template].node == v.node])
-    error_message = "A VM runs on the node of its template: the datastore is not shared, and Proxmox clones to another node only from shared storage."
-  }
 }
 
 variable "container_templates" {
@@ -470,10 +464,16 @@ variable "cluster" {
       memory_mb     = optional(number, 12288)
       disk_size_gb  = optional(number, 100)
       data_disks_gb = optional(list(number), [])
+      # A size set on a node replaces the pool's for that node alone; [] is
+      # no data disks (the sandbox node's).
       nodes = optional(map(object({
-        node    = string
-        ip      = string
-        rebuild = optional(number, 0)
+        node          = string
+        ip            = string
+        rebuild       = optional(number, 0)
+        cores         = optional(number)
+        memory_mb     = optional(number)
+        disk_size_gb  = optional(number)
+        data_disks_gb = optional(list(number))
       })), {})
     }), {})
   })
@@ -504,16 +504,6 @@ variable "cluster" {
       for n, ds in var.cluster.data_datastores : contains(var.nodes, n) && contains(lookup(var.node_datastores, n, []), ds)
     ])
     error_message = "cluster.data_datastores: each key must be one of `nodes`, and its datastore one of that node's node_datastores."
-  }
-
-  # `local` is a dir storage: Proxmox clones to another node only from shared storage.
-  validation {
-    condition = alltrue(flatten([
-      for g in [var.cluster.load_balancers, var.cluster.servers, var.cluster.agents] : [
-        for n in values(g.nodes) : !contains(keys(var.templates), g.template) || var.templates[g.template].node == n.node
-      ]
-    ]))
-    error_message = "A cluster machine runs on the node of its template: the datastore is not shared, and Proxmox clones to another node only from shared storage."
   }
 
   validation {

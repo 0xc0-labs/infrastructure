@@ -14,6 +14,10 @@
   ansible.builtin.import_tasks: configure.yml
   tags: [rke2_server, rke2_server_configure]
 
+- name: Set the node's labels and taints
+  ansible.builtin.import_tasks: node_pool.yml
+  tags: [rke2_server, rke2_server_configure]
+
 - name: Start RKE2
   ansible.builtin.import_tasks: service.yml
   tags: [rke2_server, rke2_server_service]

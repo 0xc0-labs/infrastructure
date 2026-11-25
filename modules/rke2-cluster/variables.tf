@@ -45,12 +45,15 @@ variable "ssh_public_keys" {
 }
 
 variable "load_balancers" {
-  description = "The HAProxy + keepalived pair: the VMID of the template to clone on each node, the size, and each VM's node and address."
+  description = "The HAProxy + keepalived pair: the template (its VMID and the node that holds it), the size, and each VM's node and address."
   type = object({
-    template_vm_ids = map(number)
-    cores           = number
-    memory_mb       = number
-    disk_size_gb    = number
+    template = object({
+      vm_id = number
+      node  = optional(string)
+    })
+    cores        = number
+    memory_mb    = number
+    disk_size_gb = number
     nodes = map(object({
       node    = string
       ip      = string
@@ -65,14 +68,17 @@ variable "load_balancers" {
 }
 
 variable "servers" {
-  description = "The RKE2 servers — control plane, etcd and workloads together: the VMID of the template on each node, the size, the data disks, and each VM's node and address."
+  description = "The RKE2 servers — control plane, etcd and workloads together: the template (its VMID and the node that holds it), the size, the data disks, and each VM's node and address."
   type = object({
-    template_vm_ids = map(number)
-    cpu_type        = string
-    cores           = number
-    memory_mb       = number
-    disk_size_gb    = number
-    data_disks_gb   = list(number)
+    template = object({
+      vm_id = number
+      node  = optional(string)
+    })
+    cpu_type      = string
+    cores         = number
+    memory_mb     = number
+    disk_size_gb  = number
+    data_disks_gb = list(number)
     nodes = map(object({
       node    = string
       ip      = string
@@ -87,18 +93,27 @@ variable "servers" {
 }
 
 variable "agents" {
-  description = "The RKE2 agents — workloads only, no control plane or etcd: the VMID of the template on each node, the size, the data disks, and each VM's node and address. An empty nodes map for none."
+  description = "The RKE2 agents — workloads only, no control plane or etcd: the template (its VMID and the node that holds it), the size, the data disks, and each VM's node and address, with a size of its own where it differs. An empty nodes map for none."
   type = object({
-    template_vm_ids = map(number)
-    cpu_type        = string
-    cores           = number
-    memory_mb       = number
-    disk_size_gb    = number
-    data_disks_gb   = list(number)
+    template = object({
+      vm_id = number
+      node  = optional(string)
+    })
+    cpu_type      = string
+    cores         = number
+    memory_mb     = number
+    disk_size_gb  = number
+    data_disks_gb = list(number)
+    # A size set on a node replaces the pool's for that node alone: null
+    # keeps it. [] is no data disks.
     nodes = map(object({
-      node    = string
-      ip      = string
-      rebuild = number
+      node          = string
+      ip            = string
+      rebuild       = number
+      cores         = optional(number)
+      memory_mb     = optional(number)
+      disk_size_gb  = optional(number)
+      data_disks_gb = optional(list(number))
     }))
   })
 }
