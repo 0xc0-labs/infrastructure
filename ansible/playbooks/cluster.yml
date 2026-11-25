@@ -46,6 +46,8 @@
         rke2_server_bootstrap: "{{ inventory_hostname == groups['rke2_servers'][0] }}"
         rke2_server_tls_san:
           - "{{ platform_vip }}"
+        rke2_server_node_labels: "{{ rke2_node_labels }}"
+        rke2_server_node_taints: "{{ rke2_node_taints }}"
     - role: argocd
       vars:
         argocd_admin_password_bcrypt: "{{ lookup('ansible.builtin.env', 'ARGOCD_ADMIN_PASSWORD_BCRYPT') }}"
@@ -57,9 +59,26 @@
   serial: "{{ play_serial | default(1) }}"
   roles:
     - role: base
+    # The sandbox node has no data disks: its images and volumes are on its
+    # root disk, which cloud-init grows at first boot.
     - role: longhorn_node
+      when: rke2_node_longhorn
     - role: rke2_agent
       vars:
         rke2_agent_token: "{{ lookup('ansible.builtin.env', 'RKE2_TOKEN') }}"
         rke2_agent_registration_address: "{{ platform_vip }}"
         rke2_agent_node_ip: "{{ ansible_host }}"
+        rke2_agent_node_labels: "{{ rke2_node_labels }}"
+        rke2_agent_node_taints: "{{ rke2_node_taints }}"
+
+# RKE2 reads a node's labels and taints at registration only: a node that
+# registered before they were declared gets them here, from the first server.
+- name: Set the pools' labels and taints
+  hosts: rke2_servers[0]
+  become: true
+  roles:
+    - role: rke2_pools
+      vars:
+        rke2_pools_nodes: "{{ groups['rke2_servers'] + groups['rke2_agents'] }}"
+        rke2_pools_labels: "{{ dict(rke2_pools_nodes | zip(rke2_pools_nodes | map('extract', hostvars, 'rke2_node_labels'))) }}"
+        rke2_pools_taints: "{{ dict(rke2_pools_nodes | zip(rke2_pools_nodes | map('extract', hostvars, 'rke2_node_taints'))) }}"

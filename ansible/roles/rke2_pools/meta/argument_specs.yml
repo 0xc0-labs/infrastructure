@@ -1,0 +1,19 @@
+argument_specs:
+  main:
+    short_description: Labels and taints of the RKE2 nodes
+    description:
+      - Makes true, from a server with RKE2's kubectl, the labels and taints
+        the inventory declares for every node. RKE2 reads the keys of its
+        config at registration only, so a node already in the cluster gets
+        them here; a node that registered with them finds nothing to do.
+      - A node the cluster does not have yet is skipped. Only adds and
+        changes, never removes, a label or a taint that is not declared.
+    options:
+      rke2_pools_labels:
+        type: dict
+        required: true
+        description: Node name to its labels, each a dict of key to value.
+      rke2_pools_taints:
+        type: dict
+        required: true
+        description: Node name to its taints, each a list of key=value:Effect.

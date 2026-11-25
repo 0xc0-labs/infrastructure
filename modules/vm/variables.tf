@@ -19,6 +19,12 @@ variable "template_vm_id" {
   type        = number
 }
 
+variable "template_node_name" {
+  description = "Proxmox node that holds the template. Null for the VM's own node. A different one makes the provider clone there and migrate the VM to `node_name`."
+  type        = string
+  default     = null
+}
+
 variable "datastore_id" {
   description = "Datastore for the disk and the cloud-init drive."
   type        = string

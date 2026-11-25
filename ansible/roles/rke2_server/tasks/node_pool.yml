@@ -1,0 +1,17 @@
+# A drop-in beside config.yaml, so a change to a node's pool never restarts
+# it: RKE2 reads these keys when the node registers, and the rke2_pools role
+# sets them on a node that is already in the cluster.
+- name: Write the node's labels and taints
+  ansible.builtin.template:
+    src: node-pool.yaml.j2
+    dest: "{{ rke2_server_config_dropin_dir }}/10-node-pool.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  when: rke2_server_node_labels | length > 0 or rke2_server_node_taints | length > 0
+
+- name: Remove the node's labels and taints file
+  ansible.builtin.file:
+    path: "{{ rke2_server_config_dropin_dir }}/10-node-pool.yaml"
+    state: absent
+  when: rke2_server_node_labels | length == 0 and rke2_server_node_taints | length == 0

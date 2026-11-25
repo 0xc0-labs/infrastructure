@@ -4,3 +4,5 @@ rke2_agent_selinux_version: "0.23"
 rke2_agent_channel: stable
 rke2_agent_container_selinux: true
 rke2_agent_gvisor: false
+rke2_agent_node_labels: {}
+rke2_agent_node_taints: []

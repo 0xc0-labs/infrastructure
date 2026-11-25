@@ -1,0 +1,2 @@
+rke2_pools_kubectl: /var/lib/rancher/rke2/bin/kubectl
+rke2_pools_kubeconfig: /etc/rancher/rke2/rke2.yaml

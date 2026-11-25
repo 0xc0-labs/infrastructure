@@ -426,19 +426,53 @@ guest through WARP opens (a key exchange is the first large packet). Take the
 next VM only once both hold; the other `vm-access` keeps the admin path
 meanwhile. Why, in [`docs/zones.md`](docs/zones.md#vswitches).
 
-## gVisor on vm-rke2-04
+## Node pools
 
-`vm-rke2-04` runs gVisor, as a test (2026-11-20, 0xc0-labs/workspace#266): the
-`rke2_agent` role installs `runsc` there and registers it in RKE2's containerd
-as the runtime `runsc`. `runsc` refuses a container that carries an SELinux
+Every RKE2 node belongs to a pool, the label `0xc0.cc/pool` on its Kubernetes
+node (0xc0-labs/workspace#288):
+
+| Pool | Nodes | Where | Taint |
+|---|---|---|---|
+| `infra` | `vm-rke2-01`, `-02`, `-03` | `pve-2` | none |
+| `apps` | `vm-rke2-04`, `-05` | `pve-2` | none yet: it comes in its own change, inside a maintenance window |
+| `sandbox` | `vm-rke2-06` | `pve-1` | `0xc0.cc/pool=sandbox:NoSchedule` |
+
+The inventory declares them per host (`rke2_node_labels`, `rke2_node_taints`).
+The `rke2_server` and `rke2_agent` roles write them into a drop-in of RKE2's
+config, `/etc/rancher/rke2/config.yaml.d/10-node-pool.yaml`, which RKE2 reads
+when a node registers: a new node is born with its pool and its taint. A drop-in
+never restarts the service, and RKE2 reads those keys at registration only, so
+the last play of `cluster.yml` (`rke2_pools`) sets them with `kubectl label
+--overwrite` and `kubectl taint` from the first server on a node that already
+exists. It adds and changes, never removes: take a label or a taint off a node
+by hand once it is out of the inventory.
+
+OpenTofu sizes the agents once, in `cluster.agents`, and a node of another size
+says so in its own entry (`cores`, `memory_mb`, `disk_size_gb`, `data_disks_gb`):
+a second pool would repeat the template, the CPU type and every default for one
+machine. `vm-rke2-06` is the only one that does, with `data_disks_gb = []`, and
+`rke2_node_longhorn: false` keeps `longhorn_node` off it.
+
+The templates live on `pve-2` only. A VM on `pve-1` is cloned there from the
+template found by name, and the provider migrates it (`clone.node_name`, from
+`modules/vm`): no template is baked on `pve-1`. The first boot of a new VM
+grows its root partition (cloud-init), which is why `vm-rke2-06` needs no
+`longhorn_node` root task.
+
+### gVisor on the sandbox node
+
+`vm-rke2-06` runs gVisor, and so does `vm-rke2-04` while the test lasts
+(2026-11-20, 0xc0-labs/workspace#266; `vm-rke2-04` loses it in a later change):
+the `rke2_agent` role installs `runsc` there and registers it in RKE2's
+containerd as the runtime `runsc`. `runsc` refuses a container that carries an SELinux
 label, and containerd has no switch per runtime, so the node's containers are
 given none (`selinux: false` in its RKE2 config). The host stays Enforcing and
 `rke2-selinux` stays installed; what changes is that **every pod on that node
-runs unlabelled**, the shared PostgreSQL, MariaDB, Vault's replica and
-OpenObserve among them. The RuntimeClass and the pods that use `runsc` are in
-`gitops`.
+runs unlabelled**. On `vm-rke2-04` that includes the shared PostgreSQL, MariaDB,
+Vault's replica and OpenObserve; on `vm-rke2-06` only the sandboxes. The
+RuntimeClass and the pods that use `runsc` are in `gitops`.
 
-The way back, in `ansible/inventory/hosts.yml`, on `vm-rke2-04`: delete
+The way back, in `ansible/inventory/hosts.yml`, on a host: delete
 `rke2_agent_container_selinux: false` and `rke2_agent_gvisor: true` (their
 defaults are `true` and `false`), merge, and let the pipeline run the cluster
 playbook. The role removes the template, the binaries and the file-context

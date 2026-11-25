@@ -9,3 +9,10 @@ rke2_server_version: "1.36.4~rke2r1"
 rke2_server_selinux_version: "0.23"
 rke2_agent_version: "{{ rke2_server_version }}"
 rke2_agent_selinux_version: "{{ rke2_server_selinux_version }}"
+
+# What a host sets on its Kubernetes node, in the inventory, per host: the
+# pool it belongs to (0xc0.cc/pool) and the taints that keep others off it.
+# Whether a node carries Longhorn's data disks is a host's too.
+rke2_node_labels: {}
+rke2_node_taints: []
+rke2_node_longhorn: true

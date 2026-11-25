@@ -60,6 +60,7 @@ No modules.
 | <a name="input_rebuild"></a> [rebuild](#input\_rebuild) | Bump to recreate the VM, keeping everything else as it is. | `number` | `0` | no |
 | <a name="input_ssh_public_keys"></a> [ssh\_public\_keys](#input\_ssh\_public\_keys) | Public keys authorised for username. | `list(string)` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Proxmox tags. | `list(string)` | `[]` | no |
+| <a name="input_template_node_name"></a> [template\_node\_name](#input\_template\_node\_name) | Proxmox node that holds the template. Null for the VM's own node. A different one makes the provider clone there and migrate the VM to `node_name`. | `string` | `null` | no |
 | <a name="input_template_vm_id"></a> [template\_vm\_id](#input\_template\_vm\_id) | VMID of the template to clone. | `number` | n/a | yes |
 | <a name="input_username"></a> [username](#input\_username) | Admin user created by cloud-init; SSH keys only, no password. | `string` | n/a | yes |
 | <a name="input_vnet"></a> [vnet](#input\_vnet) | Bridge the VM attaches to — its zone. | `string` | n/a | yes |

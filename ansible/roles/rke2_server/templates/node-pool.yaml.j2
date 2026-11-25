@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+{% if rke2_server_node_labels | length > 0 %}
+node-label:
+{% for key, value in rke2_server_node_labels | dictsort %}
+  - "{{ key }}={{ value }}"
+{% endfor %}
+{% endif %}
+{% if rke2_server_node_taints | length > 0 %}
+node-taint:
+{% for taint in rke2_server_node_taints %}
+  - "{{ taint }}"
+{% endfor %}
+{% endif %}

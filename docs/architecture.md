@@ -194,7 +194,7 @@ flowchart LR
   rcloud -- "Packer" --> rbase
   base -- "clone" --> vmaccess["vm-access-01 / vm-access-02<br/>vm-lb-01 / vm-lb-02"]
   runner -- "clone" --> vmci["vm-ci-01 / vm-ci-02"]
-  rbase -- "clone" --> vmrke2["vm-rke2-01 to vm-rke2-04"]
+  rbase -- "clone" --> vmrke2["vm-rke2-01 to vm-rke2-06"]
 ```
 
 OpenTofu imports the official `debian-13-cloud` and `rocky-10-cloud` images
@@ -223,7 +223,7 @@ flowchart LR
     mgmt["mgmt<br/>10.10.0.0/24<br/>vm-access-01 .10<br/>vm-access-02 .20"]
     ci["ci<br/>10.10.1.0/24<br/>vm-ci-01 .10<br/>vm-ci-02 .20"]
   end
-  platform["platform<br/>10.10.4.0/24<br/>VIP .10 · internal VIP .9<br/>vm-lb-01 .11 · vm-lb-02 .12<br/>vm-rke2-01/02/03 .21-.23 · vm-rke2-04 .24"]
+  platform["platform<br/>10.10.4.0/24<br/>VIP .10 · internal VIP .9<br/>vm-lb-01 .11 · vm-lb-02 .12<br/>vm-rke2-01/02/03 .21-.23 · vm-rke2-04/05 .24-.25 · vm-rke2-06 .26"]
   node["node<br/>pve-2, the routing host"]
   internet(("internet"))
 

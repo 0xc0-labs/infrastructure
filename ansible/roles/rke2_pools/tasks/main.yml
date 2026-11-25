@@ -1,0 +1,69 @@
+- name: Refuse a taint written another way than key=value:Effect
+  ansible.builtin.assert:
+    that: >-
+      rke2_pools_taints.values() | flatten
+      | reject('match', '^[^=:]+=[^=:]*:(NoSchedule|PreferNoSchedule|NoExecute)$')
+      | list | length == 0
+    fail_msg: "A taint must be written key=value:Effect, with an Effect of NoSchedule, PreferNoSchedule or NoExecute."
+    quiet: true
+
+# One call per node, not one for all: a node the cluster does not have yet (a
+# dry run before an agent joins) is skipped instead of failing the read.
+- name: Read the nodes
+  ansible.builtin.command:
+    argv:
+      - "{{ rke2_pools_kubectl }}"
+      - --kubeconfig
+      - "{{ rke2_pools_kubeconfig }}"
+      - get
+      - node
+      - "{{ item }}"
+      - -o
+      - json
+  loop: "{{ rke2_pools_labels | list }}"
+  register: rke2_pools_read
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# What each existing node lacks: its labels when any differs, and its taints
+# the cluster does not have, both in the form kubectl takes.
+- name: Work out what differs
+  ansible.builtin.set_fact:
+    rke2_pools_todo: "{{ rke2_pools_todo_json | from_json }}"
+  vars:
+    rke2_pools_todo_json: >-
+      {%- set todo = [] -%}
+      {%- for read in rke2_pools_read.results if read.rc == 0 -%}
+      {%- set node = read.stdout | from_json -%}
+      {%- set live_labels = node.metadata.labels | default({}) -%}
+      {%- set live_taints = [] -%}
+      {%- for taint in node.spec.taints | default([]) -%}
+      {%- set _ = live_taints.append(taint.key ~ '=' ~ (taint.value | default('')) ~ ':' ~ taint.effect) -%}
+      {%- endfor -%}
+      {%- set wanted = rke2_pools_labels[read.item] -%}
+      {%- set _ = todo.append({
+            'name': read.item,
+            'labels': (wanted | dictsort | map('join', '=') | list) if (live_labels | combine(wanted)) != live_labels else [],
+            'taints': rke2_pools_taints[read.item] | difference(live_taints)
+          }) -%}
+      {%- endfor -%}
+      {{ todo | to_json }}
+
+- name: Label the nodes
+  ansible.builtin.command:
+    argv: "{{ [rke2_pools_kubectl, '--kubeconfig', rke2_pools_kubeconfig, 'label', 'node', item.name, '--overwrite'] + item.labels }}"
+  loop: "{{ rke2_pools_todo }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.labels | length > 0
+  changed_when: true
+
+- name: Taint the nodes
+  ansible.builtin.command:
+    argv: "{{ [rke2_pools_kubectl, '--kubeconfig', rke2_pools_kubeconfig, 'taint', 'node', item.name, '--overwrite'] + item.taints }}"
+  loop: "{{ rke2_pools_todo }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.taints | length > 0
+  changed_when: true

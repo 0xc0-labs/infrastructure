@@ -32,13 +32,16 @@
   # On a first dry run no peer is up; the others show as joining, as for real.
   when: not ansible_check_mode
 
-- name: Create the config directory
+- name: Create the config directory and its drop-in directory
   ansible.builtin.file:
-    path: /etc/rancher/rke2
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: "0700"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/rancher/rke2, mode: "0700" }
+    - { path: "{{ rke2_server_config_dropin_dir }}", mode: "0755" }
 
 - name: Write the RKE2 config
   ansible.builtin.template:

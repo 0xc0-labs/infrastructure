@@ -15,9 +15,12 @@ resource "proxmox_virtual_environment_vm" "main" {
   # quorum at once: scripts/rolling-reboot restarts them one at a time.
   reboot_after_update = false
 
+  # A template on another node is cloned there and the VM migrated to
+  # node_name by the provider: the datastores are not shared.
   clone {
-    vm_id = var.template_vm_id
-    full  = true
+    vm_id     = var.template_vm_id
+    node_name = var.template_node_name == var.node_name ? null : var.template_node_name
+    full      = true
   }
 
   operating_system {

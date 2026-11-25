@@ -82,13 +82,18 @@ data "proxmox_virtual_environment_vms" "templates" {
 }
 
 locals {
-  # Keyed "<node>/<template>": a template is found by name, on the node the
-  # clone runs on.
-  template_ids = merge([
-    for node, d in data.proxmox_virtual_environment_vms.templates : {
-      for vm in d.vms : "${node}/${vm.name}" => vm.vm_id
-    }
-  ]...)
+  # A template is found by name, never by VMID: the node that holds it and
+  # its VMID. A VM on another node is cloned there and migrated (modules/vm).
+  # Packer keeps one copy of each; if two nodes held one, the first by name
+  # would win.
+  template_copies = flatten([
+    for node, d in data.proxmox_virtual_environment_vms.templates : [
+      for vm in d.vms : { name = vm.name, node = node, vm_id = vm.vm_id }
+    ]
+  ])
+  templates_by_name = {
+    for name, copies in { for t in local.template_copies : t.name => t... } : name => copies[0]
+  }
 }
 
 module "templates" {
@@ -278,8 +283,9 @@ module "vms" {
   node_name = each.value.node
   # A template is missing while Packer rebuilds it. The fallback, the highest
   # VMID, never exists: a new VM fails instead of cloning another one.
-  template_vm_id = lookup(local.template_ids, "${each.value.node}/${each.value.template}", 2147483647)
-  datastore_id   = var.template_datastore
+  template_vm_id     = try(local.templates_by_name[each.value.template].vm_id, 2147483647)
+  template_node_name = try(local.templates_by_name[each.value.template].node, null)
+  datastore_id       = var.template_datastore
 
   vnet         = each.value.vnet
   mtu          = var.node_link.mtu
@@ -348,29 +354,38 @@ module "cluster" {
 
   # The same fallback as the vms: a missing template must not fail the plan.
   load_balancers = {
-    template_vm_ids = { for n in var.nodes : n => lookup(local.template_ids, "${n}/${var.cluster.load_balancers.template}", 2147483647) }
-    cores           = var.cluster.load_balancers.cores
-    memory_mb       = var.cluster.load_balancers.memory_mb
-    disk_size_gb    = var.cluster.load_balancers.disk_size_gb
-    nodes           = var.cluster.load_balancers.nodes
+    template = {
+      vm_id = try(local.templates_by_name[var.cluster.load_balancers.template].vm_id, 2147483647)
+      node  = try(local.templates_by_name[var.cluster.load_balancers.template].node, null)
+    }
+    cores        = var.cluster.load_balancers.cores
+    memory_mb    = var.cluster.load_balancers.memory_mb
+    disk_size_gb = var.cluster.load_balancers.disk_size_gb
+    nodes        = var.cluster.load_balancers.nodes
   }
   servers = {
-    template_vm_ids = { for n in var.nodes : n => lookup(local.template_ids, "${n}/${var.cluster.servers.template}", 2147483647) }
-    cpu_type        = var.cluster.servers.cpu_type
-    cores           = var.cluster.servers.cores
-    memory_mb       = var.cluster.servers.memory_mb
-    disk_size_gb    = var.cluster.servers.disk_size_gb
-    data_disks_gb   = var.cluster.servers.data_disks_gb
-    nodes           = var.cluster.servers.nodes
+    template = {
+      vm_id = try(local.templates_by_name[var.cluster.servers.template].vm_id, 2147483647)
+      node  = try(local.templates_by_name[var.cluster.servers.template].node, null)
+    }
+    cpu_type      = var.cluster.servers.cpu_type
+    cores         = var.cluster.servers.cores
+    memory_mb     = var.cluster.servers.memory_mb
+    disk_size_gb  = var.cluster.servers.disk_size_gb
+    data_disks_gb = var.cluster.servers.data_disks_gb
+    nodes         = var.cluster.servers.nodes
   }
   agents = {
-    template_vm_ids = { for n in var.nodes : n => lookup(local.template_ids, "${n}/${var.cluster.agents.template}", 2147483647) }
-    cpu_type        = var.cluster.agents.cpu_type
-    cores           = var.cluster.agents.cores
-    memory_mb       = var.cluster.agents.memory_mb
-    disk_size_gb    = var.cluster.agents.disk_size_gb
-    data_disks_gb   = var.cluster.agents.data_disks_gb
-    nodes           = var.cluster.agents.nodes
+    template = {
+      vm_id = try(local.templates_by_name[var.cluster.agents.template].vm_id, 2147483647)
+      node  = try(local.templates_by_name[var.cluster.agents.template].node, null)
+    }
+    cpu_type      = var.cluster.agents.cpu_type
+    cores         = var.cluster.agents.cores
+    memory_mb     = var.cluster.agents.memory_mb
+    disk_size_gb  = var.cluster.agents.disk_size_gb
+    data_disks_gb = var.cluster.agents.data_disks_gb
+    nodes         = var.cluster.agents.nodes
   }
 
   username        = var.vm_admin_user
