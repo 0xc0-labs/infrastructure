@@ -383,6 +383,21 @@ and the `longhorn_node` role's next run grows the volume group, the logical
 volume and the XFS filesystem inside the VM, online. Longhorn's reserve is an
 absolute number of bytes per disk and stays as it is.
 
+## The RKE2 nodes' root disks
+
+Each RKE2 node's root disk is 80 GiB (`cluster.servers.disk_size_gb` and
+`cluster.agents.disk_size_gb`), because containerd keeps its images there and
+every release of an application adds its own: at 50 GiB a node sat near the
+kubelet's image GC (85% used) and eviction thresholds
+(0xc0-labs/infrastructure#312). Root is the last partition of `/dev/sda`, so it
+grows in place.
+
+Growing it again is a change to that `disk_size_gb`: the apply grows the disk
+online, with no reboot, and the `longhorn_node` role's next run (the cluster
+playbook) runs `growpart` and `xfs_growfs /` inside the VM. Both are no-ops
+once the filesystem fills the disk. Mind the datastore's free space: the disks
+are thin-provisioned.
+
 ## Changing a guest's NIC
 
 A NIC setting, such as the `mtu` every VM and template carries, is read when
