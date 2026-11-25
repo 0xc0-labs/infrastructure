@@ -95,8 +95,8 @@ flowchart TB
 - **Disks** — both nodes are RAID 1. `pve-1` was RAID 0 until it was
   reinstalled on 2026-11-25 by the README's
   [Adding a node](../README.md#adding-a-node) and rejoined over the link with
-  `pvecm add 10.20.0.2 --link0 10.20.0.1 --use_ssh`, since `pve-2`'s `root` has
-  no password ([A node that rejoins](../README.md#a-node-that-rejoins)).
+  `pvecm add 10.20.0.2 --link0 10.20.0.1 --use_ssh`, since `pve-2`'s `root` had
+  no password then ([A node that rejoins](../README.md#a-node-that-rejoins)).
 - **`eno1`** keeps the public IP. Guests never attach to it: Hetzner drops
   unknown MACs on the public interface. They live on the zones' bridges, and
   reach the internet through the SNAT on `pve-2`, to `142.132.139.52`.

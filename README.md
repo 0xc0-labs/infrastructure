@@ -148,8 +148,9 @@ A freshly installed node answers on its public address, and its firewall
 arrives with the cluster. Until then:
 
 - `sshd` by key only: `PasswordAuthentication no` in
-  `/etc/ssh/sshd_config.d/10-key-only.conf`. `installimage` already leaves
-  `root` with no password, so nobody signs in to the web interface with one.
+  `/etc/ssh/sshd_config.d/10-key-only.conf`. `installimage` leaves `root`
+  with no password until the node has joined ([Forming the cluster](#forming-the-cluster),
+  step 11), which keeps the web interface closed to it meanwhile.
 - `LISTEN_IP="127.0.0.1"` in `/etc/default/pveproxy` (step 2): 8006 and 3128
   answer on the host only. It is removed before the cluster is formed, which
   needs the API between the nodes: [Forming the cluster](#forming-the-cluster),
@@ -306,6 +307,19 @@ reboot does not stop a join.
     [`docs/architecture.md`](docs/architecture.md#the-node)).
     `pve-1`'s bridges are layer 2 only.
 
+11. **Give `root` a password**, now that the node has joined. The operator
+    sets it from his password manager, on that node:
+
+    ```
+    ssh -t <node> passwd
+    ```
+
+    `root@pam` is checked against `/etc/shadow` of the node that serves the
+    request, and `pve.0xc0.cc` reaches the node that holds the `ci` gateway
+    (`pve-2`, through Traefik in `ct-base-01`). On 2026-11-25 the operator
+    could not sign in there because `pve-2`'s `root` had none. `sshd` stays
+    key-only: `PasswordAuthentication no` does not change.
+
 ### A node that rejoins
 
 A node reinstalled after it was removed (`pve-1`, 2026-11-25,
@@ -337,7 +351,11 @@ order:
    pvecm add 10.20.0.2 --link0 10.20.0.1 --use_ssh
    ```
 
-   `--use_ssh` because `pve-2`'s `root` has no password to give the join.
+   `--use_ssh` because `pve-2`'s `root` had no password to give the join.
+6. **Give `root` a password**, once the join is done: `ssh -t <node> passwd`,
+   from the operator's password manager, as in
+   [Forming the cluster](#forming-the-cluster), step 11, which says why.
+   `sshd` stays key-only.
 
 Seen: `pvecm status` shows `Total votes: 3` and `Quorate: Yes`,
 `pve-firewall status` is `enabled/running` on the node, and its `local` and
