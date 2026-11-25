@@ -57,14 +57,17 @@
   check_mode: false
   when: not (ansible_check_mode and longhorn_node_vgs.rc != 0)
 
+# The "data" line of xfs_info: `data = bsize=4096 blocks=N, imaxpct=25`. The
+# "log" line carries the same two words, hence the anchor.
 - name: Grow the filesystem to the whole volume
   ansible.builtin.command:
     cmd: "xfs_growfs {{ longhorn_node_path }}"
+  vars:
+    longhorn_node_xfs_data: "{{ longhorn_node_xfs.stdout | regex_search('data +=.*bsize=([0-9]+) +blocks=([0-9]+)', '\\1', '\\2') }}"
   changed_when: true
   when:
     - longhorn_node_xfs.stdout is defined
     - >-
       (longhorn_node_lv_size.stdout | trim | int)
-      - (longhorn_node_xfs.stdout | regex_search('data\s+=\s+bsize=(\d+)', '\1') | first | int)
-      * (longhorn_node_xfs.stdout | regex_search('data\s+=\s+bsize=\d+\s+blocks=(\d+)', '\1') | first | int)
+      - (longhorn_node_xfs_data[0] | int) * (longhorn_node_xfs_data[1] | int)
       > longhorn_node_grow_threshold_bytes
