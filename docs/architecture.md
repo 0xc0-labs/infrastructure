@@ -245,7 +245,8 @@ missing:
   `vm-access` connectors stays inside it.
 - **`platform`'s internal traffic never leaves it.** The cluster's own ports —
   etcd, the Kubernetes API, Canal's health check and its VXLAN overlay
-  (UDP 8472), the supervisor port, kubelet, the NodePort range, and keepalived
+  (UDP 8472), the supervisor port, kubelet, node-exporter (9100, scraped by
+  Prometheus on every node), the NodePort range, and keepalived
   between the two LB VMs (VRRP, no ports) — stay inside the zone, so they are
   self-loops the diagram does not draw. They are still entries of the matrix,
   `platform -> platform`.

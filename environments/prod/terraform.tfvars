@@ -242,7 +242,7 @@ transit = [
   { from = "ci", to = ["node"], ports = [8006], note = "the Proxmox API, for the pipeline. NEVER 22 towards the node from ci" },
   { from = "mgmt", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "Traefik in ct-base-01 (Proxmox UI, PBS, RustFS), over WARP" },
   { from = "ci", to = ["ci"], ports = [443], targets = ["ct-base-01"], note = "the runners towards RustFS and the Proxmox API, through Traefik in ct-base-01" },
-  { from = "platform", to = ["platform"], ports = ["2379-2381", 6443, 9099, 9345, 10250, 10257, 10259, "30000-32767"], note = "the cluster: etcd and its metrics, API, Canal health, supervisor, kubelet, controller-manager and scheduler metrics, NodePorts; the LB towards the nodes" },
+  { from = "platform", to = ["platform"], ports = ["2379-2381", 6443, 9099, 9100, 9345, 10250, 10257, 10259, "30000-32767"], note = "the cluster: etcd and its metrics, API, Canal health, supervisor, kubelet, controller-manager and scheduler metrics, node-exporter (Prometheus scrapes every node, workspace#290), NodePorts; the LB towards the nodes" },
   { from = "platform", to = ["platform"], proto = "udp", ports = [8472], note = "Canal VXLAN between the cluster nodes" },
   { from = "platform", to = ["platform"], proto = "vrrp", ports = [], note = "keepalived between the two LB VMs" },
   { from = "platform", to = ["platform"], ports = [443], sources = ["vm-lb-01", "vm-lb-02"], note = "the public tunnel's connectors towards the public VIP, whichever LB holds it" },
