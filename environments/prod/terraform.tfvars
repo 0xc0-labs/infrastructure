@@ -313,6 +313,9 @@ r2_buckets = {
   # Gated resources (workspace#168): private, downloads go by signed URL.
   artistlabco-com-resources         = {}
   artistlabco-com-staging-resources = {}
+  # Loki's chunks and Tempo's blocks, private (workspace#290).
+  loki-chunks  = {}
+  tempo-blocks = {}
 }
 
 # Mail sent as these domains, through Resend (workspace#92), as its DNS page
