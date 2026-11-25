@@ -50,6 +50,12 @@ zone_gateways = {
 
 template_datastore = "local"
 
+# pve-2's `sata` is the SATA RAID 1 (README, Storage `sata`).
+node_datastores = {
+  "pve-1" = ["local"]
+  "pve-2" = ["local", "sata"]
+}
+
 # Pinned to a dated build, with the checksum the distribution publishes.
 templates = {
   "debian-13-cloud" = {
@@ -171,6 +177,8 @@ cluster = {
   # The WARP-only path (operator decision, 2026-09-30): the public tunnel
   # never comes here.
   internal_vip = "10.10.4.9"
+  # Longhorn's disks leave the NVMe that carries the system disks.
+  data_datastores = { "pve-1" = "local", "pve-2" = "sata" }
   load_balancers = {
     template = "debian-13-base"
     nodes = {
@@ -182,7 +190,7 @@ cluster = {
     template = "rocky-10-base"
     # The data disks are Longhorn's, joined by LVM (the longhorn_node role).
     disk_size_gb  = 50
-    data_disks_gb = [100, 100]
+    data_disks_gb = [150, 150]
     nodes = {
       "vm-rke2-01" = { node = "pve-2", ip = "10.10.4.21", rebuild = 1 }
       "vm-rke2-02" = { node = "pve-2", ip = "10.10.4.22", rebuild = 1 }
@@ -193,7 +201,7 @@ cluster = {
   agents = {
     template      = "rocky-10-base"
     disk_size_gb  = 50
-    data_disks_gb = [100, 100]
+    data_disks_gb = [150, 150]
     nodes = {
       "vm-rke2-04" = { node = "pve-2", ip = "10.10.4.24" }
     }

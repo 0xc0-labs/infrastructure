@@ -7,6 +7,9 @@ argument_specs:
       - Joins the VM's blank data disks into one LVM volume, formatted XFS and
         mounted at Longhorn's data path. Refuses a disk that already carries
         any signature rather than format it.
+      - When the disks have grown, grows the physical volumes, the logical
+        volume and the XFS filesystem to match, online. It changes nothing when
+        nothing grew.
     options:
       longhorn_node_disks:
         type: list

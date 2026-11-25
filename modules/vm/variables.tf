@@ -24,6 +24,12 @@ variable "datastore_id" {
   type        = string
 }
 
+variable "data_datastore_id" {
+  description = "Datastore for the data disks. The system disk's (datastore_id) when null."
+  type        = string
+  default     = null
+}
+
 variable "vnet" {
   description = "Bridge the VM attaches to — its zone."
   type        = string

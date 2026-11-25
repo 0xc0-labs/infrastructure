@@ -52,7 +52,7 @@ resource "proxmox_virtual_environment_vm" "main" {
   dynamic "disk" {
     for_each = var.data_disks_gb
     content {
-      datastore_id = var.datastore_id
+      datastore_id = coalesce(var.data_datastore_id, var.datastore_id)
       interface    = "scsi${disk.key + 1}"
       size         = disk.value
       discard      = "on"

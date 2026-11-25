@@ -5,3 +5,7 @@
 - name: Prepare the data disks
   ansible.builtin.import_tasks: disks.yml
   tags: [longhorn_node, longhorn_node_disks]
+
+- name: Grow the volume with the disks
+  ansible.builtin.import_tasks: grow.yml
+  tags: [longhorn_node, longhorn_node_disks]

@@ -1,0 +1,70 @@
+# Growing a data disk in terraform.tfvars grows Proxmox's disk alone: these
+# tasks carry the new size up through the physical volume, the logical volume
+# and the filesystem, online. Each step acts only on a difference larger than
+# longhorn_node_grow_threshold_bytes, so a second run changes nothing: LVM
+# keeps a metadata area at the start of a PV, and XFS may drop a last, too
+# small allocation group.
+
+- name: Read each data disk's size and its physical volume's
+  ansible.builtin.command:
+    cmd: "pvs --noheadings --nosuffix --units b --separator , --options dev_size,pv_size {{ item }}"
+  loop: "{{ longhorn_node_disks }}"
+  register: longhorn_node_pvs
+  changed_when: false
+  check_mode: false
+  when: not (ansible_check_mode and longhorn_node_vgs.rc != 0)
+
+- name: Grow the physical volumes that are smaller than their disk
+  ansible.builtin.command:
+    cmd: "pvresize {{ item.item }}"
+  loop: "{{ longhorn_node_pvs.results | rejectattr('skipped', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.item }}"
+  changed_when: true
+  when: >-
+    (item.stdout.split(',')[0] | trim | int) - (item.stdout.split(',')[1] | trim | int)
+    > longhorn_node_grow_threshold_bytes
+
+- name: Read the volume group's free extents
+  ansible.builtin.command:
+    cmd: "vgs --noheadings --options vg_free_count {{ longhorn_node_vg }}"
+  register: longhorn_node_vg_free
+  changed_when: false
+  check_mode: false
+  when: not (ansible_check_mode and longhorn_node_vgs.rc != 0)
+
+- name: Grow the logical volume over the free extents
+  ansible.builtin.command:
+    cmd: "lvextend --extents +100%FREE {{ longhorn_node_device }}"
+  changed_when: true
+  when:
+    - longhorn_node_vg_free.stdout is defined
+    - longhorn_node_vg_free.stdout | trim | int > 0
+
+- name: Read the logical volume's size
+  ansible.builtin.command:
+    cmd: "lvs --noheadings --nosuffix --units b --options lv_size {{ longhorn_node_device }}"
+  register: longhorn_node_lv_size
+  changed_when: false
+  check_mode: false
+  when: not (ansible_check_mode and longhorn_node_vgs.rc != 0)
+
+- name: Read the filesystem's size
+  ansible.builtin.command:
+    cmd: "xfs_info {{ longhorn_node_path }}"
+  register: longhorn_node_xfs
+  changed_when: false
+  check_mode: false
+  when: not (ansible_check_mode and longhorn_node_vgs.rc != 0)
+
+- name: Grow the filesystem to the whole volume
+  ansible.builtin.command:
+    cmd: "xfs_growfs {{ longhorn_node_path }}"
+  changed_when: true
+  when:
+    - longhorn_node_xfs.stdout is defined
+    - >-
+      (longhorn_node_lv_size.stdout | trim | int)
+      - (longhorn_node_xfs.stdout | regex_search('data\s+=\s+bsize=(\d+)', '\1') | first | int)
+      * (longhorn_node_xfs.stdout | regex_search('data\s+=\s+bsize=\d+\s+blocks=(\d+)', '\1') | first | int)
+      > longhorn_node_grow_threshold_bytes

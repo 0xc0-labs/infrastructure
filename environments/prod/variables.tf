@@ -123,6 +123,16 @@ variable "template_datastore" {
   type        = string
 }
 
+variable "node_datastores" {
+  description = "The datastores each node has, by node name: `local` on both, plus `sata` on pve-2 (README, Storage `sata`)."
+  type        = map(list(string))
+
+  validation {
+    condition     = alltrue([for n in var.nodes : contains(keys(var.node_datastores), n)])
+    error_message = "Every node of `nodes` needs an entry in node_datastores."
+  }
+}
+
 variable "templates" {
   description = "Official cloud images, imported as raw templates and keyed by template name. Packer bakes the templates VMs use from them."
   type = map(object({
@@ -423,6 +433,9 @@ variable "cluster" {
     vip  = string
     # The WARP-only path's VIP, on the same load balancers: *.int.0xc0.cc.
     internal_vip = string
+    # Where each node keeps the servers' and agents' data disks. A node not
+    # listed uses template_datastore, the system disks'.
+    data_datastores = optional(map(string), {})
     load_balancers = object({
       template     = string
       cores        = optional(number, 1)
@@ -484,6 +497,13 @@ variable "cluster" {
   validation {
     condition     = alltrue([for n in values(merge(var.cluster.load_balancers.nodes, var.cluster.servers.nodes, var.cluster.agents.nodes)) : contains(var.nodes, n.node)])
     error_message = "A cluster machine's node must be one of `nodes`."
+  }
+
+  validation {
+    condition = alltrue([
+      for n, ds in var.cluster.data_datastores : contains(var.nodes, n) && contains(lookup(var.node_datastores, n, []), ds)
+    ])
+    error_message = "cluster.data_datastores: each key must be one of `nodes`, and its datastore one of that node's node_datastores."
   }
 
   # `local` is a dir storage: Proxmox clones to another node only from shared storage.
