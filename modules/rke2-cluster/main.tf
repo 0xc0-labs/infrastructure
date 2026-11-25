@@ -45,6 +45,8 @@ module "servers" {
   ipv4_gateway = local.gateway
   dns_servers  = var.dns_servers
 
+  data_datastore_id = lookup(var.data_datastore_ids, each.value.node, var.datastore_id)
+
   cores         = var.servers.cores
   memory_mb     = var.servers.memory_mb
   disk_size_gb  = var.servers.disk_size_gb
@@ -71,6 +73,8 @@ module "agents" {
   ipv4_address = "${each.value.ip}/${local.prefix_length}"
   ipv4_gateway = local.gateway
   dns_servers  = var.dns_servers
+
+  data_datastore_id = lookup(var.data_datastore_ids, each.value.node, var.datastore_id)
 
   cores         = var.agents.cores
   memory_mb     = var.agents.memory_mb

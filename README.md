@@ -344,6 +344,45 @@ Seen: `pvecm status` shows `Total votes: 3` and `Quorate: Yes`,
 `sbox` storages are active. Until the apply of its node rules, its public SSH
 is closed and it is reached over the link.
 
+## Storage `sata` on pve-2
+
+`pve-2`'s two SATA SSDs (1.7 TB each) are a RAID 1 of their own, the Proxmox
+storage `sata`, away from the NVMe RAID 1 that holds `local` and the system
+disks. The RKE2 machines' data disks, Longhorn's, live there
+(`cluster.data_datastores` in `terraform.tfvars`; `pve-1` has no `sata`, so its
+nodes use `local`). Made by hand on 2026-11-25 (0xc0-labs/infrastructure#310),
+and the same to make again, as `root` on `pve-2`:
+
+```
+sgdisk -n1:0:0 -t1:FD00 /dev/sda
+sgdisk -n1:0:0 -t1:FD00 /dev/sdb
+mdadm --create /dev/md3 --level=1 --raid-devices=2 --metadata=1.2 \
+  --bitmap=internal --name=sata /dev/sda1 /dev/sdb1
+mkfs.ext4 -L sata /dev/md3
+```
+
+Mount it at `/mnt/sata` by UUID (`blkid /dev/md3`), in `/etc/fstab`, with
+`defaults,nofail,x-systemd.device-timeout=30`. Add the array to
+`/etc/mdadm/mdadm.conf` (`mdadm --detail --scan`), run `update-initramfs -u`,
+and register the storage:
+
+```
+pvesm add dir sata --path /mnt/sata --content images --nodes pve-2 --is_mountpoint yes
+```
+
+Check the device names first: they are the two SSDs, not the NVMe pair. The
+first resync takes about two and a half hours; the array works meanwhile.
+
+A VM's data disk moves there live, one VM at a time and with Longhorn healthy
+between them: `qm disk move <vmid> <disk> sata --delete 1`. The datastore of
+`node_datastores` (`terraform.tfvars`) must list `sata` for the node, or the
+plan refuses it.
+
+Growing a data disk is a change to `data_disks_gb`: the apply grows it in place,
+and the `longhorn_node` role's next run grows the volume group, the logical
+volume and the XFS filesystem inside the VM, online. Longhorn's reserve is an
+absolute number of bytes per disk and stays as it is.
+
 ## Changing a guest's NIC
 
 A NIC setting, such as the `mtu` every VM and template carries, is read when

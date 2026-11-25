@@ -88,6 +88,10 @@ flowchart TB
   `ct-base-01`, managed here: OpenTofu makes the container and Ansible
   configures what is inside it. That Traefik is only the reverse proxy of the
   Proxmox UI, PBS and RustFS; it is not the application ingress.
+- **Storage** — `pve-2`: `local` on the NVMe RAID 1, with the system disks,
+  and `sata` on the SATA SSDs' RAID 1, with Longhorn's data disks (150 GiB
+  each, two per RKE2 node; [Storage `sata`](../README.md#storage-sata-on-pve-2)).
+  `pve-1`: `local` alone, so its RKE2 nodes would keep their data disks there.
 - **Disks** — both nodes are RAID 1. `pve-1` was RAID 0 until it was
   reinstalled on 2026-11-25 by the README's
   [Adding a node](../README.md#adding-a-node) and rejoined over the link with

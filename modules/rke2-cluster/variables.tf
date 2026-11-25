@@ -3,6 +3,12 @@ variable "datastore_id" {
   type        = string
 }
 
+variable "data_datastore_ids" {
+  description = "The datastore of the servers' and agents' data disks, by node. A node not listed keeps them on `datastore_id`."
+  type        = map(string)
+  default     = {}
+}
+
 variable "vnet" {
   description = "Bridge the whole cluster attaches to — its zone."
   type        = string

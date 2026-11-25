@@ -339,11 +339,12 @@ module "containers" {
 module "cluster" {
   source = "../../modules/rke2-cluster"
 
-  datastore_id = var.template_datastore
-  vnet         = var.cluster.vnet
-  mtu          = var.node_link.mtu
-  cidr         = var.zones[var.cluster.vnet].cidr
-  dns_servers  = var.vm_dns_servers
+  datastore_id       = var.template_datastore
+  data_datastore_ids = var.cluster.data_datastores
+  vnet               = var.cluster.vnet
+  mtu                = var.node_link.mtu
+  cidr               = var.zones[var.cluster.vnet].cidr
+  dns_servers        = var.vm_dns_servers
 
   # The same fallback as the vms: a missing template must not fail the plan.
   load_balancers = {
