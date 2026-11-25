@@ -7,6 +7,9 @@ argocd_values:
     image: "{{ argocd_image }}"
   redis:
     image: "{{ argocd_redis_image }}"
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits: {memory: 256Mi}
   dex:
     enabled: false
   configs:
@@ -26,18 +29,35 @@ argocd_values:
       enabled: true
       serviceMonitor:
         enabled: true
+    resources:
+      requests: {cpu: 50m, memory: 1Gi}
+      limits: {memory: 2Gi}
   server:
     metrics:
       enabled: true
       serviceMonitor:
         enabled: true
+    resources:
+      requests: {cpu: 10m, memory: 256Mi}
+      limits: {memory: 512Mi}
+  # Renders Helm and Kustomize, which spikes.
   repoServer:
     metrics:
       enabled: true
       serviceMonitor:
         enabled: true
+    resources:
+      requests: {cpu: 10m, memory: 256Mi}
+      limits: {memory: 1Gi}
   applicationSet:
     metrics:
       enabled: true
       serviceMonitor:
         enabled: true
+    resources:
+      requests: {cpu: 10m, memory: 256Mi}
+      limits: {memory: 512Mi}
+  notifications:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits: {memory: 128Mi}
