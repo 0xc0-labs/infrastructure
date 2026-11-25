@@ -168,10 +168,10 @@ are the applications' (`0xc0.cc/pool=apps`) on `pve-2`, with Longhorn's disks;
 `vm-rke2-06` is the sandboxes' (`0xc0.cc/pool=sandbox`, tainted
 `0xc0.cc/pool=sandbox:NoSchedule`) on `pve-1`, with 10 vCPU, 32 GiB, a 150 GiB
 root and no data disks, so no Longhorn. The servers are the `infra` pool. The
-gVisor test (2026-11-20, 0xc0-labs/workspace#266) runs on `vm-rke2-04` and
-`vm-rke2-06`: `runsc` as a second runtime and no SELinux label on their
-containers, so every pod there runs unlabelled. The pools and the way back from
-gVisor are in the README, Node pools.
+gVisor (0xc0-labs/workspace#266) runs on `vm-rke2-06` alone: `runsc` as a
+second runtime and no SELinux label on its containers, so every pod there runs
+unlabelled. The pools and the way back from gVisor are in the README, Node
+pools.
 `cluster` creates them all together (`modules/rke2-cluster`), so the load
 balancer is deployed with the cluster; each RKE2 node, servers and agents but
 `vm-rke2-06`, carries two blank data disks besides its root one. HAProxy sends the API, the

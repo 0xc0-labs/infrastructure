@@ -461,23 +461,22 @@ grows its root partition (cloud-init), which is why `vm-rke2-06` needs no
 
 ### gVisor on the sandbox node
 
-`vm-rke2-06` runs gVisor, and so does `vm-rke2-04` while the test lasts
-(2026-11-20, 0xc0-labs/workspace#266; `vm-rke2-04` loses it in a later change):
-the `rke2_agent` role installs `runsc` there and registers it in RKE2's
-containerd as the runtime `runsc`. `runsc` refuses a container that carries an SELinux
+`vm-rke2-06` is the one node that runs gVisor (0xc0-labs/workspace#266, which
+began as a test on `vm-rke2-04`, where it was removed on 2026-11-25): the
+`rke2_agent` role installs `runsc` there and registers it in RKE2's containerd
+as the runtime `runsc`. `runsc` refuses a container that carries an SELinux
 label, and containerd has no switch per runtime, so the node's containers are
 given none (`selinux: false` in its RKE2 config). The host stays Enforcing and
 `rke2-selinux` stays installed; what changes is that **every pod on that node
-runs unlabelled**. On `vm-rke2-04` that includes the shared PostgreSQL, MariaDB,
-Vault's replica and OpenObserve; on `vm-rke2-06` only the sandboxes. The
+runs unlabelled**, which is why only the sandboxes run there (its taint). The
 RuntimeClass and the pods that use `runsc` are in `gitops`.
 
 The way back, in `ansible/inventory/hosts.yml`, on a host: delete
 `rke2_agent_container_selinux: false` and `rke2_agent_gvisor: true` (their
 defaults are `true` and `false`), merge, and let the pipeline run the cluster
 playbook. The role removes the template, the binaries and the file-context
-rules, and restarts `rke2-agent` once; the node's pods are labelled again as
-they restart.
+rules, and restarts `rke2-agent` once. That restart does not restart the pods:
+they keep running, unlabelled, and are labelled again as they are recreated.
 
 ## ct-base-01: Traefik and RustFS
 
