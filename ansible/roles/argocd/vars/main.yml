@@ -5,7 +5,7 @@ argocd_chart_repo: https://argoproj.github.io/argo-helm
 argocd_values:
   global:
     image: "{{ argocd_image }}"
-    # Dex builds its redirect from the URL the chart derives from this.
+    # argocd-cm's url, and so the OIDC redirect, derive from this.
     domain: argocd.int.0xc0.cc
   redis:
     image: "{{ argocd_redis_image }}"
@@ -13,11 +13,7 @@ argocd_values:
       requests: {cpu: 10m, memory: 64Mi}
       limits: {memory: 256Mi}
   dex:
-    enabled: true
-    image: "{{ argocd_dex_image }}"
-    resources:
-      requests: {cpu: 10m, memory: 64Mi}
-      limits: {memory: 128Mi}
+    enabled: false
   configs:
     secret:
       argocdServerAdminPassword: "{{ argocd_admin_password_bcrypt }}"
@@ -26,24 +22,20 @@ argocd_values:
       kustomize.buildOptions: --enable-helm
       # The $<secret>:<key> references are Argo CD's, resolved from a Secret
       # labelled app.kubernetes.io/part-of: argocd (gitops delivers it).
-      dex.config: |
-        connectors:
-          - type: github
-            id: github
-            name: GitHub
-            config:
-              clientID: $argocd-github-oauth:client_id
-              clientSecret: $argocd-github-oauth:client_secret
-              orgs:
-                - name: 0xc0-labs
-                  teams:
-                    - admins
-    # Dex names a team <org>:<team>. The default policy is empty: a GitHub user
-    # outside the team gets nothing.
+      oidc.config: |
+        name: Cloudflare Access
+        issuer: https://0xc0.cloudflareaccess.com/cdn-cgi/access/sso/oidc/f9f9f5de60201dde55364a8adb78333dca7b613ef5d506c9e9cc6b70e3486ad6
+        clientID: $argocd-oidc:client_id
+        clientSecret: $argocd-oidc:client_secret
+        requestedScopes:
+          - openid
+          - profile
+          - email
+    # Cloudflare's application for Argo CD admits only the team
+    # 0xc0-labs/admins and the operator's emails, so whoever signs in is an
+    # admin: admission is decided there, once (0xc0-labs/workspace#310).
     rbac:
-      policy.default: ""
-      policy.csv: |
-        g, 0xc0-labs:admins, role:admin
+      policy.default: role:admin
     # Plain HTTP: Traefik ends TLS.
     params:
       server.insecure: true
