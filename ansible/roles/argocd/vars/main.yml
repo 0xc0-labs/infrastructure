@@ -5,19 +5,45 @@ argocd_chart_repo: https://argoproj.github.io/argo-helm
 argocd_values:
   global:
     image: "{{ argocd_image }}"
+    # Dex builds its redirect from the URL the chart derives from this.
+    domain: argocd.int.0xc0.cc
   redis:
     image: "{{ argocd_redis_image }}"
     resources:
       requests: {cpu: 10m, memory: 64Mi}
       limits: {memory: 256Mi}
   dex:
-    enabled: false
+    enabled: true
+    image: "{{ argocd_dex_image }}"
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits: {memory: 128Mi}
   configs:
     secret:
       argocdServerAdminPassword: "{{ argocd_admin_password_bcrypt }}"
     # gitops inflates its charts through Kustomize's helmCharts.
     cm:
       kustomize.buildOptions: --enable-helm
+      # The $<secret>:<key> references are Argo CD's, resolved from a Secret
+      # labelled app.kubernetes.io/part-of: argocd (gitops delivers it).
+      dex.config: |
+        connectors:
+          - type: github
+            id: github
+            name: GitHub
+            config:
+              clientID: $argocd-github-oauth:client_id
+              clientSecret: $argocd-github-oauth:client_secret
+              orgs:
+                - name: 0xc0-labs
+                  teams:
+                    - admins
+    # Dex names a team <org>:<team>. The default policy is empty: a GitHub user
+    # outside the team gets nothing.
+    rbac:
+      policy.default: ""
+      policy.csv: |
+        g, 0xc0-labs:admins, role:admin
     # Plain HTTP: Traefik ends TLS.
     params:
       server.insecure: true
