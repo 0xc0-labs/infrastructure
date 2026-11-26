@@ -52,3 +52,27 @@ when the file changes while the server runs. The check reads
 server's own `127.0.0.1:6443`, never at the load balancer. After a reload,
 with no restart, the same metric shows the new hash:
 `kubectl get --raw /metrics | grep authentication_config_controller`.
+
+### Who it trusts
+
+`rke2_server_authentication_jwt` is set for the cluster in
+`inventory/group_vars/platform.yml`: one authenticator, for the Cloudflare
+Access application for the cluster (the output `access_oidc_issuers.kubernetes`
+of the OpenTofu root; the audience is the client ID, the last segment of the
+issuer's URL). Whoever holds a token it issued is the user of the token's
+`email`, and every such user is in the group `admins`, which gitops binds to
+`cluster-admin`. The group is a constant because Cloudflare's token carries no
+team: the application admits only the team `0xc0-labs/admins` and the
+operator's emails (0xc0-labs/workspace#310), so being admitted is being an
+admin. Three rules back it: a token with no email is refused, and so is a
+username starting with `system:`, which Kubernetes reserves for its own. The
+third, `claims.?email_verified.orValue(true) == true`, is there because
+Kubernetes refuses a file whose username uses `claims.email` without naming
+`claims.email_verified`; Cloudflare's token carries no such claim, so it passes
+on the default.
+
+Changing the list restarts nothing. The play waits up to two minutes for the
+hash of the new file, the API server's own limit (it watches the file and
+re-reads it every minute). If it does not come, the play fails and names
+`apiserver_authentication_config_controller_automatic_reloads_total{status="failure"}`,
+which moves when the API server could not load the file and kept the old one.

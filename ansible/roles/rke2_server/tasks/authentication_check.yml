@@ -14,20 +14,47 @@
 # The API server sets this metric when it starts, and again on every reload,
 # with the SHA-256 of the file it loaded: a server that came back without the
 # argument does not have it at all. In a dry run the file is not there yet, so
-# the checksum defaults to empty and the skipped task still renders.
-- name: Wait for the API server to report the file the role wrote
-  ansible.builtin.shell:
-    cmd: >-
-      set -o pipefail;
-      {{ rke2_server_kubectl }} get --raw /metrics
-      | grep -F '{{ rke2_server_authentication_metric }}{'
-      | grep -cF ',hash="sha256:{{ rke2_server_authentication_file.stat.checksum | default('') }}"'
-    executable: /bin/bash
+# the checksum defaults to empty and the skipped task still renders. After a
+# reload with no restart the API server notices the file within two minutes: it
+# watches it and also re-reads it every minute.
+- name: Check the API server loaded the file the role wrote
+  when: not rke2_server_pending
   environment:
     KUBECONFIG: "{{ rke2_server_kubeconfig }}"
-  register: rke2_server_authentication_loaded
-  until: rke2_server_authentication_loaded.rc == 0
-  retries: 12
-  delay: 5
-  changed_when: false
-  when: not rke2_server_pending
+  block:
+    - name: Wait for the API server to report the file the role wrote
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail;
+          {{ rke2_server_kubectl }} get --raw /metrics
+          | grep -F '{{ rke2_server_authentication_metric }}{'
+          | grep -cF ',hash="sha256:{{ rke2_server_authentication_file.stat.checksum | default('') }}"'
+        executable: /bin/bash
+      register: rke2_server_authentication_loaded
+      until: rke2_server_authentication_loaded.rc == 0
+      retries: 24
+      delay: 5
+      changed_when: false
+  rescue:
+    # A file the API server cannot load is ignored and the last good one kept:
+    # the hash stays as it was and only this counter moves.
+    - name: Read the API server's failed reloads of the file
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail;
+          {{ rke2_server_kubectl }} get --raw /metrics
+          | grep -F '{{ rke2_server_authentication_reloads_metric }}{'
+          | grep -F 'status="failure"'
+          || true
+        executable: /bin/bash
+      register: rke2_server_authentication_failures
+      changed_when: false
+
+    - name: Fail with what the API server reported
+      ansible.builtin.fail:
+        msg: >-
+          The API server did not report the hash of {{ rke2_server_authentication_config }}
+          (sha256:{{ rke2_server_authentication_file.stat.checksum | default('') }}) within two minutes.
+          A file it cannot load is ignored and the last good one kept, which raises
+          {{ rke2_server_authentication_reloads_metric }}{status="failure"}:
+          {{ rke2_server_authentication_failures.stdout | trim or 'no failed reload counted' }}.
