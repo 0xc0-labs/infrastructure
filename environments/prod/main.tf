@@ -167,6 +167,17 @@ module "access_apps" {
   identity_provider_id = module.zero_trust.onetimepin_identity_provider_id
 }
 
+module "access_oidc_apps" {
+  source   = "../../modules/access-oidc-app"
+  for_each = var.access_oidc_apps
+
+  account_id    = var.cloudflare_account_id
+  team_name     = var.zero_trust_team
+  name          = each.value.name
+  redirect_uris = each.value.redirect_uris
+  policy_id     = module.zero_trust.access_policy_id
+}
+
 module "email_routing" {
   source = "../../modules/email-routing"
   # The domains are not secret; their addresses and destinations are.
