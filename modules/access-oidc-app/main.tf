@@ -15,7 +15,7 @@ resource "cloudflare_zero_trust_access_application" "main" {
     grant_types = concat(
       ["authorization_code"],
       var.public_client ? ["authorization_code_with_pkce"] : [],
-      var.refresh_token_lifetime != null ? ["refresh_token"] : [],
+      var.refresh_token_lifetime != null ? ["refresh_tokens"] : [],
     )
 
     # Null leaves the attribute unset, so the applications without a public

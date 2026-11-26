@@ -45,7 +45,7 @@ variable "access_token_lifetime" {
 }
 
 variable "refresh_token_lifetime" {
-  description = "How long the refresh token lives, in units m, h and d (\"1d\"). When set, the application also takes the refresh_token grant, so the tool renews its tokens without a browser login and Access checks the policy again at each refresh. Null issues no refresh token."
+  description = "How long the refresh token lives, in units m, h and d (\"1d\"). When set, the application also takes the refresh_tokens grant, so the tool renews its tokens without a browser login and Access checks the policy again at each refresh. Null issues no refresh token."
   type        = string
   default     = null
 
