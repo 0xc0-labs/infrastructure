@@ -36,6 +36,11 @@ rke2_server_authentication_jwt:
     claimValidationRules:
       - expression: has(claims.email) && claims.email != ""
         message: the token carries no email
+      # Kubernetes refuses a username built from claims.email unless a rule
+      # names claims.email_verified. Cloudflare's token carries no such claim,
+      # so this passes on the default.
+      - expression: claims.?email_verified.orValue(true) == true
+        message: the token's email is not verified
     userValidationRules:
       - expression: "!user.username.startsWith('system:')"
         message: "a username may not start with system:"

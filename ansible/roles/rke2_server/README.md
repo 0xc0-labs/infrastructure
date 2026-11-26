@@ -64,8 +64,12 @@ issuer's URL). Whoever holds a token it issued is the user of the token's
 `cluster-admin`. The group is a constant because Cloudflare's token carries no
 team: the application admits only the team `0xc0-labs/admins` and the
 operator's emails (0xc0-labs/workspace#310), so being admitted is being an
-admin. Two rules back it: a token with no email is refused, and so is a
-username starting with `system:`, which Kubernetes reserves for its own.
+admin. Three rules back it: a token with no email is refused, and so is a
+username starting with `system:`, which Kubernetes reserves for its own. The
+third, `claims.?email_verified.orValue(true) == true`, is there because
+Kubernetes refuses a file whose username uses `claims.email` without naming
+`claims.email_verified`; Cloudflare's token carries no such claim, so it passes
+on the default.
 
 Changing the list restarts nothing. The play waits up to two minutes for the
 hash of the new file, the API server's own limit (it watches the file and
