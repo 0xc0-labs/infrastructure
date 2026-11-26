@@ -182,6 +182,32 @@ variable "warp_allowed_emails" {
   sensitive   = true
 }
 
+# From Vault (ci/infrastructure/github-oauth-access, client_id).
+variable "github_oauth_client_id" {
+  description = "Client ID of the GitHub OAuth App behind Cloudflare Access's GitHub login."
+  type        = string
+  sensitive   = true
+}
+
+# From Vault (ci/infrastructure/github-oauth-access, client_secret).
+variable "github_oauth_client_secret" {
+  description = "Client secret of that OAuth App."
+  type        = string
+  sensitive   = true
+}
+
+variable "github_organization" {
+  description = "GitHub organization whose team is let in through the GitHub login."
+  type        = string
+  default     = "0xc0-labs"
+}
+
+variable "github_admins_team" {
+  description = "Team of github_organization that may enroll a WARP device."
+  type        = string
+  default     = "admins"
+}
+
 # Not secret, but kept out of this public repo: from Vault
 # (ci/infrastructure/email-routing), as JSON.
 variable "email_destinations" {

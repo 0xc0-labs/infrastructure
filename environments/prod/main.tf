@@ -143,6 +143,11 @@ module "zero_trust" {
   include_networks = [var.zones_cidr]
   allowed_emails   = var.warp_allowed_emails
 
+  github_client_id     = var.github_oauth_client_id
+  github_client_secret = var.github_oauth_client_secret
+  github_organization  = var.github_organization
+  github_team          = var.github_admins_team
+
   private_hostnames    = var.base_service_hostnames
   private_hostnames_ip = var.containers["ct-base-01"].ip
 

@@ -14,6 +14,8 @@ vault_env_state
 vault_env_proxmox
 vault_env CLOUDFLARE_API_TOKEN shared/cloudflare api_token
 vault_env TF_VAR_warp_allowed_emails infrastructure/warp allowed_emails
+vault_env TF_VAR_github_oauth_client_id infrastructure/github-oauth-access client_id
+vault_env TF_VAR_github_oauth_client_secret infrastructure/github-oauth-access client_secret
 vault_env TF_VAR_email_destinations infrastructure/email-routing destinations
 vault_env TF_VAR_email_forwards infrastructure/email-routing forwards
 

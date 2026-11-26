@@ -25,7 +25,16 @@ resource "cloudflare_zero_trust_access_policy" "main" {
   account_id = var.account_id
   name       = "${var.team_name} operator"
   decision   = "allow"
-  include    = [for e in var.allowed_emails : { email = { email = e } }]
+  include = concat(
+    [for e in var.allowed_emails : { email = { email = e } }],
+    [{
+      github_organization = {
+        name                 = var.github_organization
+        team                 = var.github_team
+        identity_provider_id = cloudflare_zero_trust_access_identity_provider.github.id
+      }
+    }],
+  )
 }
 
 resource "cloudflare_zero_trust_access_identity_provider" "onetimepin" {
@@ -33,6 +42,17 @@ resource "cloudflare_zero_trust_access_identity_provider" "onetimepin" {
   name       = "One-time PIN"
   type       = "onetimepin"
   config     = {}
+}
+
+# Cloudflare's callback for this OAuth App: https://<team_name>.cloudflareaccess.com/cdn-cgi/access/callback
+resource "cloudflare_zero_trust_access_identity_provider" "github" {
+  account_id = var.account_id
+  name       = "GitHub"
+  type       = "github"
+  config = {
+    client_id     = var.github_client_id
+    client_secret = var.github_client_secret
+  }
 }
 
 resource "cloudflare_zero_trust_access_application" "main" {
