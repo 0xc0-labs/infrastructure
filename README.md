@@ -62,13 +62,18 @@ the secret, and `kubectl` with the client ID alone, through PKCE:
 export VAULT_ADDR=https://vault.int.0xc0.cc
 mise exec -- vault login -no-print
 
-scripts/tofu prod output -json access_oidc_clients | jq '.vault | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform vault/oidc -
-scripts/tofu prod output -json access_oidc_clients | jq '.grafana | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform grafana/oidc -
-scripts/tofu prod output -json access_oidc_clients | jq '.argocd | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform argocd/oidc -
-scripts/tofu prod output -json access_oidc_clients | jq '.kubernetes | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform headlamp/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq -e '.vault | select(.client_id != null and .client_secret != null) | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform vault/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq -e '.grafana | select(.client_id != null and .client_secret != null) | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform grafana/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq -e '.argocd | select(.client_id != null and .client_secret != null) | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform argocd/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq -e '.kubernetes | select(.client_id != null and .client_secret != null) | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform headlamp/oidc -
 
 rm -f ~/.vault-token
 ```
+
+A pair that is not in the state yet, because the run from `main` that creates
+the application has not finished, makes `jq` select nothing: `vault kv put`
+then fails on its empty input and writes nothing. Wait for the run and repeat
+that one command.
 
 `kv put` rewrites the path whole, which is right here: the two keys are all it
 holds. Cloudflare returns a client secret on creation only, so it lives in the
