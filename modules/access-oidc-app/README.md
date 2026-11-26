@@ -63,8 +63,8 @@ No modules.
 | <a name="input_name"></a> [name](#input\_name) | Name of the application, as the Access launcher shows it. | `string` | n/a | yes |
 | <a name="input_policy_id"></a> [policy\_id](#input\_policy\_id) | ID of the reusable Access policy that decides who signs in: the one that admits the operator and the admins team. | `string` | n/a | yes |
 | <a name="input_public_client"></a> [public\_client](#input\_public\_client) | Also a public client: the authorization code flow with PKCE, which a CLI runs with its client ID alone, besides the one with the client secret. | `bool` | `false` | no |
-| <a name="input_refresh_token_lifetime"></a> [refresh\_token\_lifetime](#input\_refresh\_token\_lifetime) | How long the refresh token lives, in units m, h and d ("1d"). When set, the application also takes the refresh\_token grant, so the tool renews its tokens without a browser login and Access checks the policy again at each refresh. Null issues no refresh token. | `string` | `null` | no |
 | <a name="input_redirect_uris"></a> [redirect\_uris](#input\_redirect\_uris) | Where the tool receives the login: its callback, and a CLI's local one. | `list(string)` | n/a | yes |
+| <a name="input_refresh_token_lifetime"></a> [refresh\_token\_lifetime](#input\_refresh\_token\_lifetime) | How long the refresh token lives, in units m, h and d ("1d"). When set, the application also takes the refresh\_token grant, so the tool renews its tokens without a browser login and Access checks the policy again at each refresh. Null issues no refresh token. | `string` | `null` | no |
 | <a name="input_team_name"></a> [team\_name](#input\_team\_name) | Zero Trust team name: the issuer lives at <team\_name>.cloudflareaccess.com. | `string` | n/a | yes |
 
 ## Outputs
