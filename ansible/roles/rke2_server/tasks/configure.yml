@@ -43,6 +43,47 @@
     - { path: /etc/rancher/rke2, mode: "0700" }
     - { path: "{{ rke2_server_config_dropin_dir }}", mode: "0755" }
 
+# RKE2 creates this directory when it starts, so a first run makes it. No
+# notify: the API server watches the file and reloads it by itself.
+- name: Create the directory of the API server's configuration files
+  ansible.builtin.file:
+    path: "{{ rke2_server_authentication_config | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write the API server's authentication configuration
+  ansible.builtin.template:
+    src: authentication-config.yaml.j2
+    dest: "{{ rke2_server_authentication_config }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Read the SELinux type of the API server's configuration files
+  ansible.builtin.command:
+    cmd: >-
+      stat -c %C
+      {{ rke2_server_authentication_config }}
+      {{ rke2_server_authentication_config | dirname }}/egress-selector-config.yaml
+  register: rke2_server_authentication_context
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# The sibling exists once RKE2 has started; a first run has nothing to compare.
+- name: Check the file has its sibling's SELinux type
+  ansible.builtin.assert:
+    that: >-
+      rke2_server_authentication_context.stdout_lines | map('split', ':') | map(attribute=2) | unique | length == 1
+    fail_msg: >-
+      {{ rke2_server_authentication_config }} does not carry the SELinux type of
+      egress-selector-config.yaml: {{ rke2_server_authentication_context.stdout_lines }}
+  when:
+    - not ansible_check_mode
+    - rke2_server_authentication_context.stdout_lines | length == 2
+
 - name: Write the RKE2 config
   ansible.builtin.template:
     src: config.yaml.j2

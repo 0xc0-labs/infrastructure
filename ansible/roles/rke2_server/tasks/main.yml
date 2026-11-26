@@ -21,3 +21,7 @@
 - name: Start RKE2
   ansible.builtin.import_tasks: service.yml
   tags: [rke2_server, rke2_server_service]
+
+- name: Check the API server loaded its authentication configuration
+  ansible.builtin.import_tasks: authentication_check.yml
+  tags: [rke2_server, rke2_server_service]

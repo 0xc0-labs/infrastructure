@@ -23,3 +23,23 @@ node's pods get the new one when the node is restarted.
 
 Check it: `kubectl -n kube-system get cm rke2-canal-config -o
 jsonpath='{.data.veth_mtu}'`.
+
+## The API server's authentication configuration
+
+The API server starts with `--authentication-config`, a file the role writes
+at `/var/lib/rancher/rke2/server/etc/authentication-config.yaml`
+(`AuthenticationConfiguration`, `apiserver.config.k8s.io/v1`). Its `jwt` list
+comes from `rke2_server_authentication_jwt`, empty by default: no issuer is
+trusted, and client certificates and service account tokens work as before.
+
+The file sits beside `egress-selector-config.yaml`, in the directory the API
+server's pod mounts whole, so a file replaced later is still the one the pod
+sees, and it carries the same SELinux type (the role checks it). The API
+server watches it and reloads it without a restart: writing the file never
+restarts `rke2-server`. Only the argument in `config.yaml` did, once. A file it
+cannot load is ignored and the last good one kept, so a mistake is not an
+outage, and does not show as a failed run either: the role checks the
+`success` status of
+`apiserver_authentication_config_controller_automatic_reload_last_timestamp_seconds`
+after a restart. To look at it afterwards:
+`kubectl get --raw /metrics | grep authentication_config_controller`.

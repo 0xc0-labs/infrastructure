@@ -71,3 +71,13 @@ argument_specs:
         elements: str
         default: []
         description: Taints the node registers with, each as key=value:Effect. The same drop-in, the same limits as the labels.
+      rke2_server_authentication_jwt:
+        type: list
+        elements: dict
+        default: []
+        description:
+          - >-
+            JWT authenticators written to the API server's authentication
+            configuration, each as in apiserver.config.k8s.io/v1
+            AuthenticationConfiguration. Empty trusts no issuer.
+          - The API server reloads the file by itself, so changing this never restarts rke2-server.

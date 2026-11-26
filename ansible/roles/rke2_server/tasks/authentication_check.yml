@@ -1,0 +1,20 @@
+# The handler that restarts the server runs at the end of the play otherwise,
+# after this check.
+- name: Restart rke2-server now if its config changed
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the API server to report the authentication configuration
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      {{ rke2_server_kubectl }} get --raw /metrics
+      | grep -c '^{{ rke2_server_authentication_metric }}{[^}]*status="success"'
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ rke2_server_kubeconfig }}"
+  register: rke2_server_authentication_loaded
+  until: rke2_server_authentication_loaded.rc == 0
+  retries: 12
+  delay: 5
+  changed_when: false
+  when: not rke2_server_pending
