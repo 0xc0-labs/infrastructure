@@ -375,7 +375,7 @@ variable "transit" {
       !(contains(e.to, "mgmt") && e.from != "mgmt")
       || (e.from == "ci" && length(e.sources) > 0 && e.proto == "tcp" && length(e.ports) == 1 && tostring(e.ports[0]) == "22")
       || (
-        e.from == "platform" && e.to == ["mgmt"] && e.proto == "tcp" && length(e.ports) == 1 && tostring(e.ports[0]) == "20241"
+        e.from == "platform" && length(e.to) == 1 && e.proto == "tcp" && length(e.ports) == 1 && tostring(e.ports[0]) == "20241"
         && length(e.sources) == 0 && toset(e.targets) == toset(["vm-access-01", "vm-access-02"])
       )
     ])
