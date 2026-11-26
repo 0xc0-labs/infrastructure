@@ -21,9 +21,9 @@ argocd_values:
     # Plain HTTP: Traefik ends TLS.
     params:
       server.insecure: true
-      otlp.address: openobserve-collector-gateway-collector.openobserve-collector.svc.cluster.local:4317
+      otlp.address: otel-gateway.opentelemetry.svc.cluster.local:4317
       otlp.insecure: true
-  # The OpenObserve collector's target allocator finds the ServiceMonitors.
+  # Prometheus (kube-prometheus-stack, in gitops) finds the ServiceMonitors.
   controller:
     metrics:
       enabled: true
