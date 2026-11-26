@@ -177,6 +177,9 @@ module "access_oidc_apps" {
   redirect_uris = each.value.redirect_uris
   public_client = each.value.public_client
   policy_id     = module.zero_trust.access_policy_id
+
+  access_token_lifetime  = each.value.access_token_lifetime
+  refresh_token_lifetime = each.value.refresh_token_lifetime
 }
 
 module "email_routing" {

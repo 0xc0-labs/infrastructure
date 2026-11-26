@@ -323,7 +323,9 @@ access_oidc_apps = {
     ]
   }
   # Headlamp signs in with the secret; kubectl oidc-login with PKCE and no
-  # secret (workspace#313).
+  # secret (workspace#313). The API server takes Cloudflare's token as it is, so
+  # its lifetime is the session's, and a refresh makes Cloudflare check the
+  # policy again.
   kubernetes = {
     name = "Kubernetes"
     redirect_uris = [
@@ -331,7 +333,9 @@ access_oidc_apps = {
       "http://localhost:8000",
       "http://localhost:18000",
     ]
-    public_client = true
+    public_client          = true
+    access_token_lifetime  = "1h"
+    refresh_token_lifetime = "1d"
   }
 }
 

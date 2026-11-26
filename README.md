@@ -49,6 +49,12 @@ come out of the root as `access_oidc_clients` (sensitive), and the issuers as
 `access_oidc_issuers`. The tools' side of this is in `vault` and `gitops`, and
 the `argocd` Ansible role here.
 
+The cluster's application alone sets the token lifetimes: an access token of
+one hour and a refresh token of one day, since the API server takes
+Cloudflare's token as it is and its lifetime is the session's, and a refresh
+makes Cloudflare check the policy again. The other three keep Cloudflare's
+defaults, because each tool keeps a session of its own after the sign-in.
+
 After the apply, the operator writes each tool's pair to its own path in Vault.
 [Writing or rotating a secret](https://github.com/0xc0-labs/vault#writing-or-rotating-a-secret)
 has the login and the rules. Each command reads the pair from the output and

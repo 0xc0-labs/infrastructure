@@ -591,6 +591,9 @@ variable "access_oidc_apps" {
     name          = string
     redirect_uris = list(string)
     public_client = optional(bool, false)
+    # Null keeps Cloudflare's defaults; modules/access-oidc-app says what they are.
+    access_token_lifetime  = optional(string)
+    refresh_token_lifetime = optional(string)
   }))
   default = {}
 }
