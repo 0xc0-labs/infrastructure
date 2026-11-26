@@ -7,7 +7,7 @@ Wants=network-online.target
 [Service]
 # systemd reads the token as root, then drops to a throwaway user.
 EnvironmentFile=/etc/cloudflared/tunnel.env
-ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --protocol {{ cloudflared_protocol }} --grace-period 5s run
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --protocol {{ cloudflared_protocol }} --grace-period 5s --metrics {{ cloudflared_metrics_address }} run
 # WARP sessions are long-lived and never drain on their own: without a cap, a
 # stop waited for systemd's 90s default and a SIGKILL. The other connector
 # carries the sessions meanwhile.

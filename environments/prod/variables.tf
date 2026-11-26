@@ -368,14 +368,18 @@ variable "transit" {
     error_message = "data initiates nothing: no transit entry from data may have a destination."
   }
 
-  # Operator decision, 2026-09-29.
+  # Operator decisions, 2026-09-29 (CI SSH) and 2026-11-26 (connector metrics).
   validation {
     condition = alltrue([
       for e in var.transit :
       !(contains(e.to, "mgmt") && e.from != "mgmt")
       || (e.from == "ci" && length(e.sources) > 0 && e.proto == "tcp" && length(e.ports) == 1 && tostring(e.ports[0]) == "22")
+      || (
+        e.from == "platform" && e.to == ["mgmt"] && e.proto == "tcp" && length(e.ports) == 1 && tostring(e.ports[0]) == "20241"
+        && length(e.sources) == 0 && toset(e.targets) == toset(["vm-access-01", "vm-access-02"])
+      )
     ])
-    error_message = "Nothing may initiate towards mgmt from another zone, except SSH (22) from named CI VMs (sources)."
+    error_message = "Nothing may initiate towards mgmt from another zone, except SSH (22) from named CI VMs (sources) and 20241 from platform to the vm-access connectors (targets)."
   }
 
   validation {

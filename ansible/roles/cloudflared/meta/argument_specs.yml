@@ -20,6 +20,10 @@ argument_specs:
         default: auto
         choices: [auto, quic, http2]
         description: Transport to Cloudflare's edge. auto is QUIC, with HTTP/2 as the fallback.
+      cloudflared_metrics_address:
+        type: str
+        default: "0.0.0.0:20241"
+        description: Address:port where the connector serves its Prometheus metrics.
       cloudflared_deb_sha256:
         type: str
         required: true
