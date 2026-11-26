@@ -585,6 +585,15 @@ variable "access_apps" {
   default = {}
 }
 
+variable "access_oidc_apps" {
+  description = "Tools that sign in through Cloudflare Access as an OIDC provider, keyed by a short name: one SaaS application each, admitting who WARP enrollment admits. The client ID and secret come out as access_oidc_clients."
+  type = map(object({
+    name          = string
+    redirect_uris = list(string)
+  }))
+  default = {}
+}
+
 variable "r2_buckets" {
   description = "R2 buckets for the applications' and the platform's files, keyed by name, <namespace>-<purpose>: one per application and environment, or per platform component. A bucket with public is served read only at public.hostname, a name in public.zone_name, through Cloudflare's cache: edge_ttl seconds at the edge, browser_ttl in the browser. One without is reached only with a token."
   type = map(object({

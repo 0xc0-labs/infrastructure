@@ -38,6 +38,38 @@ the PR; `apply` runs after merge and waits for the operator's approval. The
 conventions are the org's, in
 [`0xc0-labs/.github`](https://github.com/0xc0-labs/.github#conventions).
 
+## Carrying the OIDC clients into Vault
+
+Cloudflare Access is an OIDC identity provider for Vault, Grafana and Argo CD:
+one SaaS application each (`modules/access-oidc-app`), admitting who WARP
+enrollment admits, the `0xc0-labs/admins` team and the operator's emails, with
+either login, the one-time PIN or GitHub. The client ID and secret of each
+come out of the root as `access_oidc_clients` (sensitive), and the issuers as
+`access_oidc_issuers`. The tools' side of this is in `vault` and `gitops`, and
+the `argocd` Ansible role here.
+
+After the apply, the operator writes each tool's pair to its own path in Vault.
+[Writing or rotating a secret](https://github.com/0xc0-labs/vault#writing-or-rotating-a-secret)
+has the login and the rules. Each command reads the pair from the output and
+hands it to Vault on stdin as JSON: neither value reaches the screen, the
+shell history or a command line. They write `client_id` and `client_secret` at
+`platform/vault/oidc`, `platform/grafana/oidc` and `platform/argocd/oidc`:
+
+```
+export VAULT_ADDR=https://vault.int.0xc0.cc
+mise exec -- vault login -no-print
+
+scripts/tofu prod output -json access_oidc_clients | jq '.vault | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform vault/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq '.grafana | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform grafana/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq '.argocd | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform argocd/oidc -
+
+rm -f ~/.vault-token
+```
+
+`kv put` rewrites the path whole, which is right here: the two keys are all it
+holds. Cloudflare returns a client secret on creation only, so it lives in the
+state from then on.
+
 ## Adding a node
 
 How a Proxmox node is installed for this org, written from `pve-2`

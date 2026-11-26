@@ -31,6 +31,21 @@ output "public_tunnel_id" {
   value       = module.public_tunnel.id
 }
 
+output "access_oidc_clients" {
+  description = "Each Access OIDC application's client ID, client secret and issuer. The operator carries the first two into Vault (README, Carrying the OIDC clients into Vault); never to a file."
+  value = { for key, app in module.access_oidc_apps : key => {
+    client_id     = app.client_id
+    client_secret = app.client_secret
+    issuer        = app.issuer
+  } }
+  sensitive = true
+}
+
+output "access_oidc_issuers" {
+  description = "Each Access OIDC application's issuer URL, for the tools' own configuration."
+  value       = { for key, app in module.access_oidc_apps : key => app.issuer }
+}
+
 output "r2_buckets" {
   description = "Each bucket's S3 endpoint, where its application reaches it with its token, and the URL its files are served at, or null."
   value       = { for name, b in module.r2_buckets : name => { endpoint = b.endpoint, public_url = b.public_url } }

@@ -301,6 +301,29 @@ access_apps = {
   }
 }
 
+# Cloudflare Access as the OIDC provider of the admin tools (workspace#310).
+# The localhost URIs are the CLIs' own callbacks.
+access_oidc_apps = {
+  vault = {
+    name = "Vault"
+    redirect_uris = [
+      "https://vault.int.0xc0.cc/ui/vault/auth/oidc/oidc/callback",
+      "http://localhost:8250/oidc/callback",
+    ]
+  }
+  grafana = {
+    name          = "Grafana"
+    redirect_uris = ["https://grafana.int.0xc0.cc/login/generic_oauth"]
+  }
+  argocd = {
+    name = "Argo CD"
+    redirect_uris = [
+      "https://argocd.int.0xc0.cc/auth/callback",
+      "http://localhost:8085/auth/callback",
+    ]
+  }
+}
+
 # docs/architecture.md, The applications' files (workspace#88).
 r2_buckets = {
   # artistlabco.com's Strapi (workspace#202).

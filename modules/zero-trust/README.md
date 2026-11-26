@@ -77,5 +77,6 @@ No modules.
 
 | Name | Description |
 | ---- | ----------- |
+| <a name="output_access_policy_id"></a> [access\_policy\_id](#output\_access\_policy\_id) | ID of the policy that admits allowed\_emails and the GitHub team: WARP enrollment's, reused by every application that admits the same people. |
 | <a name="output_onetimepin_identity_provider_id"></a> [onetimepin\_identity\_provider\_id](#output\_onetimepin\_identity\_provider\_id) | ID of the one-time PIN identity provider, the login the Access applications offer. |
 <!-- END_TF_DOCS -->
