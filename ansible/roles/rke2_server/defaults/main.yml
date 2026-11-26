@@ -13,3 +13,7 @@ rke2_server_canal_veth_mtu: 1350
 
 rke2_server_node_labels: {}
 rke2_server_node_taints: []
+
+# JWT authenticators of the API server's authentication configuration, each
+# as in apiserver.config.k8s.io/v1. Empty trusts no issuer.
+rke2_server_authentication_jwt: []

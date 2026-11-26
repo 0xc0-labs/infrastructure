@@ -21,3 +21,8 @@ rke2_server_conflicting_units:
   - firewalld.service
   - nm-cloud-setup.service
   - nm-cloud-setup.timer
+
+# Beside egress-selector-config.yaml, in the directory the API server's pod
+# mounts whole: a file replaced later is still the one the pod sees.
+rke2_server_authentication_config: /var/lib/rancher/rke2/server/etc/authentication-config.yaml
+rke2_server_authentication_metric: apiserver_authentication_config_controller_last_config_info
