@@ -7,9 +7,6 @@ argocd_image:
 argocd_redis_image:
   repository: ecr-public.aws.com/docker/library/redis
   tag: "8.6.4-alpine@sha256:2cc044fc5a07c9b701f8f1255a309ae9ad7856e694ac03513bf3648c01e40763"
-argocd_dex_image:
-  repository: ghcr.io/dexidp/dex
-  tag: "v2.45.1@sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462"
 
 argocd_repo_url: https://github.com/0xc0-labs/gitops.git
 argocd_repo_revision: main
