@@ -82,7 +82,7 @@ variable "github_client_secret" {
 }
 
 variable "github_organization" {
-  description = "GitHub organization whose team may enroll a device and log in to the Access applications."
+  description = "GitHub organization whose team may enroll a device."
   type        = string
 }
 

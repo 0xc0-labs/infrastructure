@@ -25,22 +25,7 @@ variable "operator_emails" {
 }
 
 variable "identity_provider_id" {
-  description = "ID of the account's one-time PIN identity provider, a login offered."
-  type        = string
-}
-
-variable "github_identity_provider_id" {
-  description = "ID of the account's GitHub identity provider, the other login offered."
-  type        = string
-}
-
-variable "github_organization" {
-  description = "GitHub organization of the team the policy lets in."
-  type        = string
-}
-
-variable "github_team" {
-  description = "Team of github_organization let in beside the operator and the group."
+  description = "ID of the account's one-time PIN identity provider, the only login offered."
   type        = string
 }
 

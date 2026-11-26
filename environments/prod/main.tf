@@ -165,10 +165,6 @@ module "access_apps" {
   bypass_paths         = each.value.bypass_paths
   operator_emails      = var.warp_allowed_emails
   identity_provider_id = module.zero_trust.onetimepin_identity_provider_id
-
-  github_identity_provider_id = module.zero_trust.github_identity_provider_id
-  github_organization         = var.github_organization
-  github_team                 = var.github_admins_team
 }
 
 module "email_routing" {

@@ -10,8 +10,7 @@ resource "cloudflare_zero_trust_access_group" "viewers" {
   }
 }
 
-# The operator gets in even if the group is emptied. The GitHub team is in the
-# policy, not the group, which OpenTofu does not own.
+# The operator gets in even if the group is emptied.
 resource "cloudflare_zero_trust_access_policy" "main" {
   account_id = var.account_id
   name       = "${var.name} viewers and operator"
@@ -19,13 +18,6 @@ resource "cloudflare_zero_trust_access_policy" "main" {
   include = concat(
     [{ group = { id = cloudflare_zero_trust_access_group.viewers.id } }],
     [for e in var.operator_emails : { email = { email = e } }],
-    [{
-      github_organization = {
-        name                 = var.github_organization
-        team                 = var.github_team
-        identity_provider_id = var.github_identity_provider_id
-      }
-    }],
   )
 }
 
@@ -35,7 +27,7 @@ resource "cloudflare_zero_trust_access_application" "main" {
   name                      = var.name
   domain                    = var.domain
   session_duration          = var.session_duration
-  allowed_idps              = [var.identity_provider_id, var.github_identity_provider_id]
+  allowed_idps              = [var.identity_provider_id]
   auto_redirect_to_identity = true
   policies                  = [{ id = cloudflare_zero_trust_access_policy.main.id, precedence = 1 }]
 }

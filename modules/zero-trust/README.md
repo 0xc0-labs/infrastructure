@@ -16,7 +16,10 @@ The account-wide Zero Trust singletons.
   sent to the visitor's email.
 - **GitHub identity provider** — a login through an OAuth App
   (`github_client_id`, `github_client_secret`), whose callback is
-  `https://<team_name>.cloudflareaccess.com/cdn-cgi/access/callback`.
+  `https://<team_name>.cloudflareaccess.com/cdn-cgi/access/callback`. The
+  `warp` application sets no `allowed_idps`, so enrollment offers every
+  provider of the account, this one and the one-time PIN; `access-app` pins
+  its own to the one-time PIN alone.
 - **Gateway DNS override** — resolves `private_hostnames` to
   `private_hostnames_ip` for WARP devices, so the base services are reached
   through the tunnel instead of their public record.
@@ -60,7 +63,7 @@ No modules.
 | <a name="input_allowed_emails"></a> [allowed\_emails](#input\_allowed\_emails) | Who may enroll a device into the organization's WARP — and so reach the private networks. | `list(string)` | n/a | yes |
 | <a name="input_github_client_id"></a> [github\_client\_id](#input\_github\_client\_id) | Client ID of the GitHub OAuth App behind the GitHub login. | `string` | n/a | yes |
 | <a name="input_github_client_secret"></a> [github\_client\_secret](#input\_github\_client\_secret) | Client secret of that OAuth App. | `string` | n/a | yes |
-| <a name="input_github_organization"></a> [github\_organization](#input\_github\_organization) | GitHub organization whose team may enroll a device and log in to the Access applications. | `string` | n/a | yes |
+| <a name="input_github_organization"></a> [github\_organization](#input\_github\_organization) | GitHub organization whose team may enroll a device. | `string` | n/a | yes |
 | <a name="input_github_team"></a> [github\_team](#input\_github\_team) | Team of github\_organization let in beside allowed\_emails. | `string` | n/a | yes |
 | <a name="input_include_networks"></a> [include\_networks](#input\_include\_networks) | The only networks WARP carries (split tunnels in Include mode). Everything else stays off the tunnel. | `list(string)` | n/a | yes |
 | <a name="input_internal_domains"></a> [internal\_domains](#input\_internal\_domains) | Domains whose every name WARP devices resolve to internal\_ip: the WARP-only path. None, no rule. | `list(string)` | `[]` | no |
@@ -74,6 +77,5 @@ No modules.
 
 | Name | Description |
 | ---- | ----------- |
-| <a name="output_github_identity_provider_id"></a> [github\_identity\_provider\_id](#output\_github\_identity\_provider\_id) | ID of the GitHub identity provider, the second login the Access applications offer. |
 | <a name="output_onetimepin_identity_provider_id"></a> [onetimepin\_identity\_provider\_id](#output\_onetimepin\_identity\_provider\_id) | ID of the one-time PIN identity provider, the login the Access applications offer. |
 <!-- END_TF_DOCS -->

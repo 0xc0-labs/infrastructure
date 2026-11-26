@@ -203,7 +203,7 @@ variable "github_organization" {
 }
 
 variable "github_admins_team" {
-  description = "Team of github_organization that may enroll a WARP device and log in to the Access applications."
+  description = "Team of github_organization that may enroll a WARP device."
   type        = string
   default     = "admins"
 }
