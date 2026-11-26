@@ -160,11 +160,13 @@ the invariants.
 - No zone must initiate towards a destination that isn't in `transit`: an
   entry with an empty `to` gives that zone's VMs an outbound DROP policy. None
   today, but the mechanism stays for a zone that must never egress.
-- No other zone initiates towards `mgmt`, with one exception: SSH from the
+- No other zone initiates towards `mgmt`, with two exceptions: SSH from the
   CI VMs named in its `transit` entry (`sources`), never the whole `ci` zone,
   so the pipeline can run the vm-access playbook (operator decision,
-  2026-09-29). Besides that, SSH between the `vm-access` connectors, inside
-  `mgmt`, is the only way in.
+  2026-09-29); and TCP 20241 from `platform`, towards `vm-access-01` and
+  `vm-access-02` alone (`targets`), for Prometheus to read the admin tunnel's
+  connector metrics (operator decision, 2026-11-26). Besides those, SSH
+  between the `vm-access` connectors, inside `mgmt`, is the only way in.
 - The node has a DROP policy (`node_firewall_enabled`): 22 and 8006
   from `mgmt`, 8006 from `ci`, 9100 from `platform`, and
   only SSH (22) from the internet, as break-glass, bound to the node's public

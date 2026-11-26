@@ -246,6 +246,9 @@ transit = [
   { from = "platform", to = ["platform"], proto = "udp", ports = [8472], note = "Canal VXLAN between the cluster nodes" },
   { from = "platform", to = ["platform"], proto = "vrrp", ports = [], note = "keepalived between the two LB VMs" },
   { from = "platform", to = ["platform"], ports = [443], sources = ["vm-lb-01", "vm-lb-02"], note = "the public tunnel's connectors towards the public VIP, whichever LB holds it" },
+  { from = "platform", to = ["platform"], ports = [20241], targets = ["vm-lb-01", "vm-lb-02"], note = "the public tunnel's connectors' metrics, scraped by Prometheus" },
+  # The second way into mgmt from another zone (operator decision, 2026-11-26).
+  { from = "platform", to = ["mgmt"], ports = [20241], targets = ["vm-access-01", "vm-access-02"], note = "the admin tunnel's connectors' metrics, scraped by Prometheus" },
   { from = "platform", to = ["node"], ports = [9100], note = "node metrics" },
   { from = "platform", to = ["internet"], ports = [443], note = "egress, alerts to the phone among it" },
   { from = "internet", to = ["node"], ports = [22], note = "break-glass SSH, key-only; the Hetzner firewall keeps it closed until opened" },

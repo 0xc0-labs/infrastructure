@@ -143,7 +143,7 @@ The addressing plan, so that no address is handed out twice:
 `ct-base-01` is an unprivileged LXC container, Debian 13, 1 core, 1 GiB and 8 GB
 (`modules/container`), the home of the base services: Traefik and RustFS. It is in `ci` because the runners reach RustFS, which
 holds the OpenTofu state, and nothing enters `mgmt` from another zone but SSH
-from the CI VMs (invariant 5). It runs on `pve-2`, which is also its gateway.
+from the CI VMs and the connectors' metrics (invariant 5). It runs on `pve-2`, which is also its gateway.
 Traefik and RustFS run in it, from the
 pipeline (README, ct-base-01), and the names `pve`, `pbs`, `s3` and
 `s3-console` point at it: WARP's Gateway through `base_service_hostnames`, and
@@ -256,9 +256,11 @@ its PR. Those marked **(code)** are also validations in
    a zone that must initiate nothing.
 5. Nothing enters `mgmt` from another zone **(code)**, except SSH from the CI
    VMs the entry names in `sources`, never the whole `ci` zone: the pipeline
-   runs the vm-access playbook (operator decision, 2026-09-29). Besides that,
-   SSH between the two `vm-access` connectors, inside `mgmt`, is the only way
-   in.
+   runs the vm-access playbook (operator decision, 2026-09-29); and TCP 20241
+   from `platform` to `vm-access-01` and `vm-access-02` alone, the `targets`
+   the entry names, for Prometheus to read the admin tunnel's connector metrics
+   (operator decision, 2026-11-26). Besides those, SSH between the two
+   `vm-access` connectors, inside `mgmt`, is the only way in.
 6. Every node stays on DROP, with the same rules on each: only 22 and
    8006 from `10.10.0.0/22` (22 never from `ci`), 9100 from `platform`, and
    from the internet only SSH as break-glass, on the node's public NIC alone

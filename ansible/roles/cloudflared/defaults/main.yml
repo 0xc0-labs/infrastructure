@@ -5,3 +5,7 @@ cloudflared_deb_sha256: "3be76adc4185d36a0bfb4c2dd8663292f0ed363797f2180333b513b
 # QUIC needs its own rule in the stateless Hetzner firewall
 # (docs/architecture.md).
 cloudflared_protocol: auto
+
+# Prometheus in the cluster scrapes it; the zone firewall is what limits who
+# reaches it (transit, platform towards the connectors).
+cloudflared_metrics_address: "0.0.0.0:20241"
