@@ -24,6 +24,9 @@ argument_specs:
       argocd_redis_image:
         type: dict
         description: Redis's image, repository and tag, the tag pinned by digest.
+      argocd_dex_image:
+        type: dict
+        description: Dex's image, repository and tag, the tag pinned by digest.
       argocd_repo_url:
         type: str
         default: https://github.com/0xc0-labs/gitops.git
