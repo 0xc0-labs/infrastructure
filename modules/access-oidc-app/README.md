@@ -7,6 +7,10 @@ application of type OIDC.
   `authorization_code` grant and the scopes `openid`, `email`, `profile` and
   `groups`. The tool signs in with its `client_id` and `client_secret` and
   reads the discovery document under the `issuer`.
+- **A public client**, off by default: `public_client` adds the
+  `authorization_code_with_pkce` grant and sets
+  `allow_pkce_without_client_secret`, so a CLI signs in with the client ID
+  alone while a server-side tool keeps using the secret.
 - **Who gets in** is `policy_id`, a policy the caller makes once and passes in:
   the module copies no rule. In this root it is the policy that admits WARP
   enrollment (`modules/zero-trust`), so the same people sign in to the tools.
@@ -48,6 +52,7 @@ No modules.
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | Cloudflare account ID. | `string` | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Name of the application, as the Access launcher shows it. | `string` | n/a | yes |
 | <a name="input_policy_id"></a> [policy\_id](#input\_policy\_id) | ID of the reusable Access policy that decides who signs in: the one that admits the operator and the admins team. | `string` | n/a | yes |
+| <a name="input_public_client"></a> [public\_client](#input\_public\_client) | Also a public client: the authorization code flow with PKCE, which a CLI runs with its client ID alone, besides the one with the client secret. | `bool` | `false` | no |
 | <a name="input_redirect_uris"></a> [redirect\_uris](#input\_redirect\_uris) | Where the tool receives the login: its callback, and a CLI's local one. | `list(string)` | n/a | yes |
 | <a name="input_team_name"></a> [team\_name](#input\_team\_name) | Zero Trust team name: the issuer lives at <team\_name>.cloudflareaccess.com. | `string` | n/a | yes |
 

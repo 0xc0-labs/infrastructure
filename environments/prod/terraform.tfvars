@@ -322,6 +322,17 @@ access_oidc_apps = {
       "http://localhost:8085/auth/callback",
     ]
   }
+  # Headlamp signs in with the secret; kubectl oidc-login with PKCE and no
+  # secret (workspace#313).
+  kubernetes = {
+    name = "Kubernetes"
+    redirect_uris = [
+      "https://headlamp.int.0xc0.cc/oidc-callback",
+      "http://localhost:8000",
+      "http://localhost:18000",
+    ]
+    public_client = true
+  }
 }
 
 # docs/architecture.md, The applications' files (workspace#88).
