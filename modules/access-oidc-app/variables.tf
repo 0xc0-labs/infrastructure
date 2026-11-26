@@ -23,6 +23,12 @@ variable "redirect_uris" {
   }
 }
 
+variable "public_client" {
+  description = "Also a public client: the authorization code flow with PKCE, which a CLI runs with its client ID alone, besides the one with the client secret."
+  type        = bool
+  default     = false
+}
+
 variable "policy_id" {
   description = "ID of the reusable Access policy that decides who signs in: the one that admits the operator and the admins team."
   type        = string

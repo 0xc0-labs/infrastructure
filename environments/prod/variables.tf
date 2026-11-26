@@ -590,6 +590,7 @@ variable "access_oidc_apps" {
   type = map(object({
     name          = string
     redirect_uris = list(string)
+    public_client = optional(bool, false)
   }))
   default = {}
 }

@@ -175,6 +175,7 @@ module "access_oidc_apps" {
   team_name     = var.zero_trust_team
   name          = each.value.name
   redirect_uris = each.value.redirect_uris
+  public_client = each.value.public_client
   policy_id     = module.zero_trust.access_policy_id
 }
 

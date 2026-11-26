@@ -10,7 +10,11 @@ resource "cloudflare_zero_trust_access_application" "main" {
   saas_app = {
     auth_type     = "oidc"
     redirect_uris = var.redirect_uris
-    grant_types   = ["authorization_code"]
+    grant_types   = var.public_client ? ["authorization_code", "authorization_code_with_pkce"] : ["authorization_code"]
     scopes        = ["openid", "email", "profile", "groups"]
+
+    # Null leaves the attribute unset, so the applications without a public
+    # client plan no diff.
+    allow_pkce_without_client_secret = var.public_client ? true : null
   }
 }

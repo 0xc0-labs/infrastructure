@@ -40,7 +40,8 @@ conventions are the org's, in
 
 ## Carrying the OIDC clients into Vault
 
-Cloudflare Access is an OIDC identity provider for Vault, Grafana and Argo CD:
+Cloudflare Access is an OIDC identity provider for Vault, Grafana, Argo CD and
+the cluster:
 one SaaS application each (`modules/access-oidc-app`), admitting who WARP
 enrollment admits, the `0xc0-labs/admins` team and the operator's emails, with
 either login, the one-time PIN or GitHub. The client ID and secret of each
@@ -53,7 +54,9 @@ After the apply, the operator writes each tool's pair to its own path in Vault.
 has the login and the rules. Each command reads the pair from the output and
 hands it to Vault on stdin as JSON: neither value reaches the screen, the
 shell history or a command line. They write `client_id` and `client_secret` at
-`platform/vault/oidc`, `platform/grafana/oidc` and `platform/argocd/oidc`:
+`platform/vault/oidc`, `platform/grafana/oidc`, `platform/argocd/oidc` and
+`platform/headlamp/oidc`, the last one the cluster's: Headlamp signs in with
+the secret, and `kubectl` with the client ID alone, through PKCE:
 
 ```
 export VAULT_ADDR=https://vault.int.0xc0.cc
@@ -62,6 +65,7 @@ mise exec -- vault login -no-print
 scripts/tofu prod output -json access_oidc_clients | jq '.vault | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform vault/oidc -
 scripts/tofu prod output -json access_oidc_clients | jq '.grafana | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform grafana/oidc -
 scripts/tofu prod output -json access_oidc_clients | jq '.argocd | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform argocd/oidc -
+scripts/tofu prod output -json access_oidc_clients | jq '.kubernetes | {client_id, client_secret}' | mise exec -- vault kv put -mount=platform headlamp/oidc -
 
 rm -f ~/.vault-token
 ```
