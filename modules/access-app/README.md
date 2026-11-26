@@ -7,12 +7,14 @@ operator manages in the dashboard.
   `operator_emails` because Cloudflare refuses a group with no members.
   **OpenTofu ignores its members** (`ignore_changes = [include]`): what the
   operator adds or removes in the dashboard stays, and no apply is needed.
-- **A policy**, `allow`, that includes the group and `operator_emails`, so
-  the operator gets in even if the group is emptied.
-- **A self-hosted application** on `domain`, whose only login is the
-  account's one-time PIN, `identity_provider_id`: the visitor gets a code by
-  email and the session lasts `session_duration` (24 hours by default). The
-  login redirects straight to the PIN page.
+- **A policy**, `allow`, that includes the group, `operator_emails` and the
+  GitHub team `github_organization/github_team`, so the operator gets in even
+  if the group is emptied. The team is in the policy, not the group: OpenTofu
+  ignores the group's members.
+- **A self-hosted application** on `domain`, with two logins: the account's
+  one-time PIN (`identity_provider_id`: a code sent by email) and GitHub
+  (`github_identity_provider_id`). The session lasts `session_duration` (24
+  hours by default). The visitor picks one on Cloudflare's login page.
 
 - **Bypass applications**, one per path in `bypass_paths` (none by default): a
   self-hosted application on `domain` plus the path, with one policy,
@@ -22,7 +24,7 @@ operator manages in the dashboard.
   that cannot log in, a webhook. **Anyone can reach a bypassed path**, so it
   must authenticate its callers itself.
 
-OpenTofu owns everything but the group's members. The identity provider is
+OpenTofu owns everything but the group's members. The identity providers are
 `zero-trust`'s.
 
 ## Adding or removing a viewer
@@ -68,7 +70,10 @@ No modules.
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | Cloudflare account ID. | `string` | n/a | yes |
 | <a name="input_bypass_paths"></a> [bypass\_paths](#input\_bypass\_paths) | Paths on the hostname, and what is under them, reached without a login. Anyone can reach them: each must authenticate its callers itself. | `list(string)` | `[]` | no |
 | <a name="input_domain"></a> [domain](#input\_domain) | Hostname the application protects. | `string` | n/a | yes |
-| <a name="input_identity_provider_id"></a> [identity\_provider\_id](#input\_identity\_provider\_id) | ID of the account's one-time PIN identity provider, the only login offered. | `string` | n/a | yes |
+| <a name="input_github_identity_provider_id"></a> [github\_identity\_provider\_id](#input\_github\_identity\_provider\_id) | ID of the account's GitHub identity provider, the other login offered. | `string` | n/a | yes |
+| <a name="input_github_organization"></a> [github\_organization](#input\_github\_organization) | GitHub organization of the team the policy lets in. | `string` | n/a | yes |
+| <a name="input_github_team"></a> [github\_team](#input\_github\_team) | Team of github\_organization let in beside the operator and the group. | `string` | n/a | yes |
+| <a name="input_identity_provider_id"></a> [identity\_provider\_id](#input\_identity\_provider\_id) | ID of the account's one-time PIN identity provider, a login offered. | `string` | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Name of the application. The group and the policy are named after it. | `string` | n/a | yes |
 | <a name="input_operator_emails"></a> [operator\_emails](#input\_operator\_emails) | The operator's emails: the group's seed, and let in by the policy whatever the group holds. | `list(string)` | n/a | yes |
 | <a name="input_session_duration"></a> [session\_duration](#input\_session\_duration) | How long a login lasts. | `string` | `"24h"` | no |

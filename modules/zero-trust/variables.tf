@@ -68,3 +68,25 @@ variable "internal_ip" {
     error_message = "internal_ip is required with internal_domains, and must sit inside include_networks."
   }
 }
+
+variable "github_client_id" {
+  description = "Client ID of the GitHub OAuth App behind the GitHub login."
+  type        = string
+  sensitive   = true
+}
+
+variable "github_client_secret" {
+  description = "Client secret of that OAuth App."
+  type        = string
+  sensitive   = true
+}
+
+variable "github_organization" {
+  description = "GitHub organization whose team may enroll a device and log in to the Access applications."
+  type        = string
+}
+
+variable "github_team" {
+  description = "Team of github_organization let in beside allowed_emails."
+  type        = string
+}

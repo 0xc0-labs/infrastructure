@@ -597,13 +597,30 @@ with the keys `access_key_id` and `secret_access_key`
 ([the generic block](https://github.com/0xc0-labs/vault#writing-or-rotating-a-secret)).
 The S3 endpoint is the `endpoint` of each bucket in the `r2_buckets` output.
 
+## How an admin gets in
+
+An admin is a member of the GitHub team `0xc0-labs/admins`. To enroll WARP, or
+at the login page of an Access application, they pick **GitHub**: Cloudflare
+sends them to GitHub, and lets them in once their membership of the team is
+confirmed. The one-time PIN by email stays beside it, and
+`warp_allowed_emails` still gets in with it if GitHub fails.
+
+The login is a GitHub OAuth App whose callback is
+`https://0xc0.cloudflareaccess.com/cdn-cgi/access/callback`. Its client ID and
+secret are in Vault, at `ci/infrastructure/github-oauth-access` (`client_id`,
+`client_secret`); the pipeline reads them, and a person writes or rotates them
+([the generic block](https://github.com/0xc0-labs/vault#writing-or-rotating-a-secret)).
+The OAuth App must be granted access to the `0xc0-labs` organization, or
+Cloudflare cannot read the membership.
+
 ## Hostnames behind Access
 
 `access_apps` puts a hostname behind Cloudflare Access, today
 `staging.artistlabco.com` and the admin of artistlabco.com's Strapi,
 `cms.artistlabco.com` and `cms-staging.artistlabco.com`, with no bypass. Each gets a group of viewers, `<name> viewers`, and
-logs in by a one-time PIN sent to the visitor's email, for 24 hours. The
-operator, `warp_allowed_emails` from Vault, always gets in.
+logs in for 24 hours, by a one-time PIN sent to the visitor's email or by
+GitHub. The operator, `warp_allowed_emails` from Vault, always gets in, and so
+do the members of the GitHub team `0xc0-labs/admins`.
 
 `bypass_paths` lets a path, and what is under it, skip the login, for a caller
 that cannot log in: `staging.artistlabco.com/api/stripe/webhook`, Stripe's

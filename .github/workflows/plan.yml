@@ -29,5 +29,7 @@ jobs:
         ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
         ci/data/shared/cloudflare api_token | CLOUDFLARE_API_TOKEN ;
         ci/data/infrastructure/warp allowed_emails | TF_VAR_warp_allowed_emails ;
+        ci/data/infrastructure/github-oauth-access client_id | TF_VAR_github_oauth_client_id ;
+        ci/data/infrastructure/github-oauth-access client_secret | TF_VAR_github_oauth_client_secret ;
         ci/data/infrastructure/email-routing destinations | TF_VAR_email_destinations ;
         ci/data/infrastructure/email-routing forwards | TF_VAR_email_forwards ;
