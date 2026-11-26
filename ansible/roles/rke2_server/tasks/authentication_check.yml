@@ -3,12 +3,24 @@
 - name: Restart rke2-server now if its config changed
   ansible.builtin.meta: flush_handlers
 
-- name: Wait for the API server to report the authentication configuration
+- name: Read the checksum of the authentication configuration
+  ansible.builtin.stat:
+    path: "{{ rke2_server_authentication_config }}"
+    checksum_algorithm: sha256
+  register: rke2_server_authentication_file
+  check_mode: false
+  when: not rke2_server_pending
+
+# The API server sets this metric when it starts, and again on every reload,
+# with the SHA-256 of the file it loaded: a server that came back without the
+# argument does not have it at all.
+- name: Wait for the API server to report the file the role wrote
   ansible.builtin.shell:
     cmd: >-
       set -o pipefail;
       {{ rke2_server_kubectl }} get --raw /metrics
-      | grep -c '^{{ rke2_server_authentication_metric }}{[^}]*status="success"'
+      | grep -F '{{ rke2_server_authentication_metric }}{'
+      | grep -cF ',hash="sha256:{{ rke2_server_authentication_file.stat.checksum }}"'
     executable: /bin/bash
   environment:
     KUBECONFIG: "{{ rke2_server_kubeconfig }}"
