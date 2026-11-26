@@ -16,3 +16,26 @@ rke2_agent_selinux_version: "{{ rke2_server_selinux_version }}"
 rke2_node_labels: {}
 rke2_node_taints: []
 rke2_node_longhorn: true
+
+# The API server trusts the tokens of the Cloudflare Access application for the
+# cluster. The issuer is the root's output access_oidc_issuers.kubernetes, and
+# the audience is its last segment, the client ID: neither is a secret.
+rke2_server_authentication_jwt:
+  - issuer:
+      url: https://0xc0.cloudflareaccess.com/cdn-cgi/access/sso/oidc/ce6ce5b6752cc8cd7366367c36b3f8cea85e4feff9d16de741a16ce219fb1640
+      audiences:
+        - ce6ce5b6752cc8cd7366367c36b3f8cea85e4feff9d16de741a16ce219fb1640
+    claimMappings:
+      username:
+        expression: claims.email
+      # Cloudflare's token carries no team. Its application admits only the
+      # team 0xc0-labs/admins and the operator's emails (0xc0-labs/workspace#310),
+      # so everyone who gets a token is an admin.
+      groups:
+        expression: '["admins"]'
+    claimValidationRules:
+      - expression: has(claims.email) && claims.email != ""
+        message: the token carries no email
+    userValidationRules:
+      - expression: "!user.username.startsWith('system:')"
+        message: "a username may not start with system:"
