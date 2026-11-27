@@ -16,3 +16,8 @@ github_runner_hosts:
     names: [vault.int.0xc0.cc]
   - address: "{{ hostvars['ct-base-01'].ansible_host }}"
     names: [s3.0xc0.cc, pve.0xc0.cc]
+
+# Four runners per VM, two of them build: two build jobs fit in 12 GB, and a
+# build job gets about four cores (infrastructure#350).
+github_runner_count: 4
+github_runner_build_instances: [1, 2]

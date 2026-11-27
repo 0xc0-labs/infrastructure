@@ -370,7 +370,8 @@ flowchart LR
   Plans and applies wait for the lock instead of failing.
 
 Plans, applies, Packer builds and every playbook run on ephemeral
-runners, two on each CI VM (`vm-ci-01`, `vm-ci-02`), inside the network. The
+runners, four on each CI VM (`vm-ci-01`, `vm-ci-02`, 8 cores and 12 GB each,
+two of the four taking the `build` jobs), inside the network. The
 runner group admits only the reusable workflows from `0xc0-labs/.github`,
 as they are on `main`, and fork PRs go to GitHub's runners, where they get no secrets.
 RustFS and the rest of Traefik are not reachable from the internet.
@@ -380,7 +381,7 @@ own GitHub App. The App's key never reaches the CI VMs: Vault's Transit signs
 the App's JWT for them, after an AppRole login whose token can do nothing
 else, with a secret ID only root reads.
 
-Each of a VM's two runners runs its jobs as a user of its own, and builds
+Each of a VM's four runners runs its jobs as a user of its own, and builds
 images with a rootless BuildKit of its own: started empty before every job,
 stopped after it with everything it built, and reached on a Unix socket alone.
 Nothing a job builds or caches outlives it, or reaches the other runner

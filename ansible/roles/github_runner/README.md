@@ -7,7 +7,8 @@ build an image here.
 
 ## One instance
 
-Each VM runs `github_runner_count` instances, two. Instance `<n>` is:
+Each VM runs `github_runner_count` instances: four on the CI VMs, which have 8
+cores and 12 GB (`group_vars/ci.yml`; the default is two). Instance `<n>` is:
 
 | What | Where |
 |---|---|
@@ -20,14 +21,16 @@ Each VM runs `github_runner_count` instances, two. Instance `<n>` is:
 | BuildKit's state: snapshots, cache, temporary files | `/var/lib/github-runner-buildkit/<n>` |
 
 Every instance carries the labels `github_runner_labels` (`0xc0`); the
-instances in `github_runner_build_instances` (`[1]`) also carry
-`github_runner_build_label` (`build`). A workflow that targets `build` gets at
-most one job per VM, so two Next.js builds never share its 4 GB
-(infrastructure#235), while the other instance keeps taking light jobs. The
+instances in `github_runner_build_instances` (`[1, 2]` on the CI VMs, `[1]`
+by default) also carry `github_runner_build_label` (`build`). A workflow that
+targets `build` gets at most two jobs per VM: two builds fit in 12 GB, and each
+gets about four cores, while the other two instances keep taking light jobs
+(infrastructure#235 held one build per VM on 4 GB; infrastructure#350). The
 labels are set when the runner registers, so a change reaches an instance at
 its next start. To check it, after the run: `gh api
 /orgs/0xc0-labs/actions/runners --jq '.runners[] | select(any(.labels[]; .name
-== "build")) | .name'` lists one runner per VM.
+== "build")) | .name'` lists two runners per VM, and the same call without the
+`select` lists four per VM.
 
 Before its runner starts, as root: the runner versions no instance runs from
 removed (`github-runner-prune`), the state directory and the home emptied
@@ -54,8 +57,8 @@ Nor does anything a job writes reach the runner that takes the next job:
   environment, which the runner clears before it starts a job, so no step
   inherits it.
 
-Nothing reaches the other instance either: the two run as different users,
-neither can open the other's socket, home or work folder, and a job sees no
+Nothing reaches another instance either: each runs as a different user, none
+can open another's socket, home or work folder, and a job sees no
 process but its own (`ProtectProc=invisible`), so not another's command line
 nor its environment.
 
@@ -65,7 +68,8 @@ runs.
 
 ## Memory
 
-The VMs have 4 GB of RAM and the node has none to spare, so two settings
+The VMs have 12 GB of RAM (4 GB until infrastructure#350) and the node has
+little to spare, so two settings
 (`tasks/memory.yml`, only on the CI VMs: the role is not baked, and no other
 play runs it) keep a job's peak from killing it:
 
@@ -78,7 +82,8 @@ play runs it) keep a job's peak from killing it:
 - A 4 GiB swapfile, `/swapfile`, enabled at boot through `/etc/fstab`, with
   `vm.swappiness = 10`: the Next.js build peaks at about 2.5 GB (payload#93)
   beside the system and BuildKit, and swap turns a peak that runs over into
-  slowness instead of a hung VM (#235). The 32 GB disk has the room.
+  slowness instead of a hung VM (#235). Two builds peak at about 5 GB, inside
+  the 12 GB, and the 32 GB disk has the room.
 
 To check it, after the run: `swapon --show` lists `/swapfile` at 4G, and
 `sysctl vm.overcommit_memory vm.swappiness` prints 1 and 10.

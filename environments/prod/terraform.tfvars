@@ -112,15 +112,16 @@ vms = {
     cores     = 1
     memory_mb = 1024
   }
-  # Two, so a job on one can rebuild the other.
+  # Two, so a job on one can rebuild the other. 8 cores and 12 GB each: four
+  # runners, two of them build (infrastructure#350).
   "vm-ci-01" = {
     node         = "pve-2"
     rebuild      = 1
     template     = "debian-13-runner"
     vnet         = "ci"
     ip           = "10.10.1.10"
-    cores        = 2
-    memory_mb    = 4096
+    cores        = 8
+    memory_mb    = 12288
     disk_size_gb = 32
   }
   "vm-ci-02" = {
@@ -128,8 +129,8 @@ vms = {
     template     = "debian-13-runner"
     vnet         = "ci"
     ip           = "10.10.1.20"
-    cores        = 2
-    memory_mb    = 4096
+    cores        = 8
+    memory_mb    = 12288
     disk_size_gb = 32
   }
 }
